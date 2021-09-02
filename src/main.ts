@@ -9,20 +9,28 @@ import './style.css'
 
 // https://www.catch22.net/tuts/neatpad/loading-text-file#
 
-let width = 1000,height = 1000;
+let width = 800,height = 800;
 const c = document.querySelector("canvas");
+
+// const dpr = Math.max(1,window.devicePixelRatio || 1);
+
+
 c.width = width;
 c.height = height;
 
 const ctx = c.getContext("2d");
 console.log(window.devicePixelRatio)
+ctx.save();
+ctx.strokeStyle = 'gray';
+ctx.strokeRect(0,0,width,height);
+ctx.restore();
 
-
+ctx.textBaseline = 'alphabetic';
 const text_example = "This is editable rich text, much better than a <textarea>\n, or add a semantically rendered block quote in the middle of the page, like this:\nTry it out for yourself!";
 ctx.font = '24px serif';
-const metrics = ctx.measureText('a');
-const font_height = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent + 20;
-console.log('font height : ' + font_height);
+const metrics = ctx.measureText('This is editabley rich text');
+const font_height = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+console.log(metrics);
 
 class TextDocument{
   _buffer:string = text_example;
@@ -46,19 +54,25 @@ class TextDocument{
 
 class TextView{
   doc:TextDocument;
+  row_spacing:number = 8;
   constructor(){
     this.doc = new TextDocument();
   }
 
-  paint_line(ctx:CanvasRenderingContext2D, lineno:number){
+  paint_line(ctx:CanvasRenderingContext2D, lineno:number,baseline:number){
     const text =  this.doc.getline(lineno);
-    const y = lineno * font_height;
-    // console.log(text,x);  
-    ctx.fillText(text,10,y + 50);
+
+    // ctx.fillText(text,10,y);
   }
   paint(){
+    let last_baseline = 0;
+    let last_desent = 0;
     for(let i = 0;i <this.doc._line_buffer.length - 1;i++){
-      this.paint_line(ctx,i);
+      const text =  this.doc.getline(i);
+      const m = ctx.measureText(text);
+      ctx.fillText(text,0,last_baseline + last_desent + m.actualBoundingBoxAscent + this.row_spacing);
+      last_baseline = last_baseline + last_desent + m.actualBoundingBoxAscent + this.row_spacing;
+      last_desent = m.actualBoundingBoxDescent;
     }
   }
 }
