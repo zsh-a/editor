@@ -9,15 +9,20 @@
 </head>
 
 <body>
-  <div id="app"></div>
-  <div id="exampleEditor">
-
-    <canvas width="1000" height="1000" class="carotaEditorCanvas" style="position: absolute;"></canvas>
-    <div class="carotaTextArea" style="overflow: hidden; position: absolute; height: 0;">
-      <textarea autocorrect="off" autocapitalize="off" spellcheck="false" tabindex="0"  style="position: absolute; padding: 0px; width: 1000px; height: 1em;
-        outline: none; font-size: 4px;"></textarea>
-    </div>
-  </div>
+  <!-- <div id="app"></div> -->
+  <table>
+    <tr>
+      <td>
+        <canvas width="500" height="1500" style="border: 1px solid silver" tabindex="1"></canvas>
+      </td>
+      <td style="vertical-align: top;">
+        <input type="text" id="selectionStart">
+        <input type="text" id="selectionEnd">
+        <br>
+        <textarea id="hiddenTextArea"></textarea>
+      </td>
+    </tr>
+  </table>
   <script type="module" src="/src/main.ts"></script>
 </body>
 

@@ -1,26 +1,27 @@
 import { ctx } from "./doc";
-import { ENTER, get_font_string, measure_text } from "./measure";
+import { Line } from "./line";
+// import { ENTER, get_font_string, measure_text } from "./measure";
 import { Part } from "./part";
 import { Word } from "./word";
 
-export function new_line_width(run) {
-    return measure_text(ctx, ENTER, get_font_string(run)).width;
-}
+// export function new_line_width(run) {
+//     return measure_text(ctx, ENTER, get_font_string(run)).width;
+// }
 
 var positionedChar = {
     bounds: () => {
-
+        // let wb = this.word.bounds();
     }
 };
 
-function newLineWidth(run) {
-    return measure_text(ctx, ENTER, get_font_string(run)).width;
-};
+// function newLineWidth(run) {
+//     return measure_text(ctx, ENTER, get_font_string(run)).width;
+// };
 
 
-class PositionedWord {
+export class PositionedWord {
     word: Word;
-    line;
+    line: Line;
     left: number;
     ordinal: number;
     length: number;
@@ -47,37 +48,45 @@ class PositionedWord {
             this.word.space.parts.some(eachPart);
     }
 
-    realiseCharacters() {
-        if (!this.characters) {
-            var cache = [];
-            var x = 0, self = this, ordinal = this.ordinal;
-            this.parts(function (wordPart) {
-                var text = wordPart.run.text;
-                for (var c = 0; c < text.length; c++) {
-                    var charRun = Object.create(wordPart.run);
-                    charRun.text = text[c];
-                    var p = new Part(charRun);
-                    cache.push(Object.create(positionedChar, {
-                        left: { value: x },
-                        part: { value: p },
-                        word: { value: self },
-                        ordinal: { value: ordinal }
-                    }));
-                    x += p.width;
-                    ordinal++;
-                }
-            });
-            this.characters = cache;
-        }
-    }
+    // realiseCharacters() {
+    //     if (!this.characters) {
+    //         var cache = [];
+    //         var x = 0, self = this, ordinal = this.ordinal;
+    //         this.parts(function (wordPart) {
+    //             var text = wordPart.run.text;
+    //             for (var c = 0; c < text.length; c++) {
+    //                 var charRun = Object.create(wordPart.run);
+    //                 charRun.text = text[c];
+    //                 var p = new Part(charRun);
+    //                 cache.push(Object.create(positionedChar, {
+    //                     left: { value: x },
+    //                     part: { value: p },
+    //                     word: { value: self },
+    //                     ordinal: { value: ordinal }
+    //                 }));
+    //                 x += p.width;
+    //                 ordinal++;
+    //             }
+    //         });
+    //         this.characters = cache;
+    //     }
+    // }
 //https://github.com/danielearwicker/carota/blob/5beaa16b1d46ea0b00fe2f6da0afc6b4869a2822/src/positionedword.js
-    positionedCharacters() {
-        this.realiseCharacters();
-        return this.characters;
-    }
+    // positionedCharacters() {
+    //     this.realiseCharacters();
+    //     return this.characters;
+    // }
 
-    characterByOrdinal(index) {
-
-    }
+    // characterByOrdinal(index) {
+    //     if(index >= this.ordinal && index < this.ordinal + this.length)
+    //         return this.positionedCharacters()[index - this.ordinal];
+    // }
+    // lastCharacter(){
+    //     let chars = this.positionedCharacters();
+    //     return chars[chars.length - 1];
+    // }
+    // firstCharacter(){
+    //     return this.positionedCharacters()[0];
+    // }
 
 }

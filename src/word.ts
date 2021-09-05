@@ -1,23 +1,20 @@
 import { Part } from "./part";
 
-class Section{
+export class Section{
     parts:Part[];
     ascent:number = 0;
     descent:number = 0;
     width:number = 0;
     length:number = 0;
     plain_text:string = '';
-    constructor(runs:[]){
-        this.parts = runs.map((run)=>{
-            return new Part(run);
-        });
-
+    constructor(parts:Part[]){
+        this.parts = parts;
         for(let p of this.parts){
             this.ascent = Math.max(this.ascent,p.ascent);
             this.descent = Math.max(this.descent,p.descent);
             this.width += p.width;
-            this.length += p.run.text.length;
-            this.plain_text += p.run.text;
+            this.length += p.text.length;
+            this.plain_text += p.text;
         }
     }
 }
@@ -29,7 +26,7 @@ export class Word{
     descent:number;
     width:number;
     plain_text:string;
-    constructor(coords){
+    constructor(text:Section,space:Section){
 
         // var text, space;
         // if (!coords) {
@@ -44,8 +41,8 @@ export class Word{
         //         eof: { value: true }
         //     });
         // }
-        this.text = new Section(coords.text.cut(coords.spaces));
-        this.space = new Section(coords.spaces.cut(coords.end));
+        this.text = text;
+        this.space = space;
         this.ascent = Math.max(this.text.ascent,this.space.ascent);
         this.descent = Math.max(this.text.descent,this.space.descent);
         this.width = this.text.width + this.space.width;
