@@ -52,7 +52,7 @@ export class Word{
         return this.text.parts.length == 1 && this.text.parts[0].is_newline;
     }
 
-    draw(ctx:CanvasRenderingContext2D,x,y){
+    draw(ctx:CanvasRenderingContext2D,x:number,y:number){
         for(let part of this.text.parts){
             part.draw(ctx,x,y);
             x += part.width;

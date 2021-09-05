@@ -1,11 +1,10 @@
 import { Line } from "./line";
 import { Part } from "./part";
-import { Run } from "./run";
 import { Section, Word } from "./word";
 
-export const c = document.querySelector("canvas");
-export const ctx = c.getContext("2d");
-
+const c = <HTMLCanvasElement>document.querySelector("#measure");
+export const canvas_measure = c.getContext("2d");
+// console.log(canvas_measure)
 export const SIMPLE_TEXT = [
     { text: '    Crampton Wick,\n    26th Oct 2013\n\n' },
     { text: 'Dear sir/madam,\n\nWith reference to your account ' },
@@ -61,6 +60,7 @@ export class Doc {
     selection: { start: 0, end: 0 };
 
     constructor() {
+        this.selection = {start:0,end:0};
     }
     load(runs) {
         let i = 0;
@@ -110,7 +110,7 @@ export class Doc {
     }
     layout() {
         this.lines = [];
-        let line = new Array<Word>();
+        let words = new Array<Word>();
         let line_width = 0;
         let max_ascent = 0;
         let max_descent = 0;
@@ -118,10 +118,11 @@ export class Doc {
         let y = 0;
 
         function newline(self: Doc) {
-            self.lines.push(new Line(self, line_width, y + max_ascent, max_ascent, max_descent, line, ordinal));
+            const line = new Line(self, line_width, y + max_ascent, max_ascent, max_descent, words, ordinal);
+            self.lines.push(line);
             y += max_ascent + max_descent;
             ordinal += line.length;
-            line = new Array<Word>();
+            words = new Array<Word>();
             line_width = 0;
             max_descent = 0;
             max_ascent = 0;
@@ -133,7 +134,7 @@ export class Doc {
             line_width += word.width;
             max_ascent = Math.max(max_ascent, word.ascent);
             max_descent = Math.max(max_descent, word.descent);
-            line.push(word);
+            words.push(word);
             if (word.is_newline()) {
                 newline(this);
             }
@@ -147,10 +148,79 @@ export class Doc {
         }
         return text;
     }
-    draw(ctx: CanvasRenderingContext2D) {
+    draw(ctx: CanvasRenderingContext2D,bottom:number) {
         for (let line of this.lines) {
+            if(line.baseline - line.ascent > bottom) break;
             line.draw(ctx);
         }
     }
 
+    word_by_coordinate(x:number,y:number){
+        let l = 0,r = this.lines.length - 1;
+        while(l < r){
+            let mid = l + r >> 1;
+            let t = this.lines[mid].baseline - this.lines[mid].ascent;
+            if(y < t) r = mid;
+            else l = mid + 1;
+        }
+        let row = l - 1;
+        let line = this.lines[row];
+        console.log(row);
+
+        let pwords = line.positionedWords;
+        l = 0, r = line.positionedWords.length - 1;
+        while(l < r){
+            let mid = l + r >> 1;
+            if(pwords[mid].left > x) r = mid;
+            else l = mid + 1;
+        }
+        let word_idx ;
+        if(pwords[l].left > x){
+            if(l >= 1) word_idx = l - 1;
+            else word_idx = 0;
+        }else{
+            word_idx = pwords.length - 1;
+        }
+        console.log(word_idx)
+
+        let word = pwords[word_idx];
+        let ch = word.character_by_coordinate(x);
+        return ch;
+    }
+
+    select(ordinal,ordinalEnd){
+        this.selection.start = ordinal;
+        this.selection.end = ordinalEnd;
+    }
+    draw_selection(ctx:CanvasRenderingContext2D){
+        const start = this.character_by_ordinal(this.selection.start);
+        const start_bounds = start.bounds();
+        const line = start.pword.line.bounds(false);
+        if(this.selection.start === this.selection.end){
+            ctx.beginPath();
+            ctx.moveTo(start_bounds.left,line.top);
+            ctx.lineTo(start_bounds.left,line.top + line.height);
+            ctx.stroke();
+        }
+    }
+
+    character_by_ordinal(index:number){
+
+        let l = 0,r = this.lines.length - 1;
+        while(l < r){
+            let mid = l + r >> 1;
+            if(this.lines[mid].ordinal + this.lines[mid].length > index) r = mid;
+            else l = mid + 1;
+        }
+        let line_no = l;
+        let line = this.lines[line_no];
+        l = 0,r = line.positionedWords.length - 1;
+        while(l < r){
+            let mid = l + r >> 1;
+            if(line.positionedWords[mid].ordinal + line.positionedWords[mid].length > index) r = mid;
+            else l = mid + 1;
+        }
+        let word = line.positionedWords[l];
+        return word.character_by_ordinal(index);
+    }
 }

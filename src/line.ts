@@ -1,4 +1,5 @@
 import { PositionedWord } from "./positionedword";
+import { Rect } from "./rect";
 import { Word } from "./word";
 
 export class Line {
@@ -18,14 +19,15 @@ export class Line {
         this.descent = descent;
         this.ordinal = ordinal;
         let x = 0;
-        this.positionedWords = words.map((word) => {
-            let left = x;
+        
+        let idx = ordinal;
+        this.positionedWords = new Array<PositionedWord>();
+        for(let word of words){
+            this.positionedWords.push(new PositionedWord(word,this,x,idx));
             x += word.width;
-            let wordOrdinal = ordinal;
-            ordinal += word.text.length + word.space.length;
-            return new PositionedWord(word, this, left, wordOrdinal);
-        });
-        this.length = ordinal - this.ordinal;
+            idx += word.text.length + word.space.length;
+        }
+        this.length = idx - this.ordinal;
     }
     draw(ctx: CanvasRenderingContext2D) {
         for (let word of this.positionedWords) {
@@ -47,10 +49,10 @@ export class Line {
         }
         return new Rect(0, this.baseline - this.ascent, this.width, this.ascent + this.descent);
     }
-    characterByOrdinal(index) {
-        // TODO
-        // if (index >= this.ordinal && index < this.ordinal + this.length) {
+    // characterByOrdinal(index:number) {
+    //     // TODO
+    //     // if (index >= this.ordinal && index < this.ordinal + this.length) {
 
-        // }
-    }
+    //     // }
+    // }
 }

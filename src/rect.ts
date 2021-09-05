@@ -1,4 +1,4 @@
-class Rect{
+export class Rect{
     left:number;
     top:number;
     width:number;

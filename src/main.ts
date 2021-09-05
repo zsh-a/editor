@@ -1,4 +1,4 @@
-import {Doc, SIMPLE_TEXT } from './doc';
+import { Doc, SIMPLE_TEXT } from './doc';
 import './style.css'
 import $ from 'jquery';
 // const app = document.querySelector<HTMLDivElement>('#app')!
@@ -11,9 +11,10 @@ import $ from 'jquery';
 // https://www.catch22.net/tuts/neatpad/loading-text-file#
 
 
+const canvas = $('#canvas');
 
-const c = document.querySelector("canvas");
-const text_area = <HTMLTextAreaElement>document.querySelector("#hiddenTextArea");
+// const c = document.querySelector("canvas");
+const text_area = $("#hiddenTextArea");
 
 // const c = $('canvas'),text_area = $('#hiddenTextArea');
 
@@ -21,7 +22,7 @@ const text_area = <HTMLTextAreaElement>document.querySelector("#hiddenTextArea")
 
 
 // const ctx = c[0].getContext("2d");
-const ctx = c.getContext('2d');
+const ctx = (<HTMLCanvasElement>canvas[0]).getContext('2d');
 // console.log(window.devicePixelRatio)
 // ctx.save();
 // ctx.strokeStyle = 'gray';
@@ -31,7 +32,7 @@ const ctx = c.getContext('2d');
 
 
 let doc = new Doc();
-doc.width = c.width;
+doc.width = canvas.width();
 
 let ss = new Date();
 doc.load(SIMPLE_TEXT);
@@ -40,30 +41,56 @@ console.log("load time " + ee + 'ms');
 
 // console.log(doc.words);
 // console.log(doc.lines);
-doc.draw(ctx);
+// doc.draw(ctx, canvas.height());
+
+text_area.val(doc.plain_text());
+
+// c.onfocus = ()=>{
+//   setTimeout(()=>{
+//     text_area.focus();
+//   });
+// };
+
+// canvas.on('focus', () => {
+//   setTimeout(() => {
+//     text_area.trigger("focus");
+//   }, 10);
+// });
 
 
-text_area.value = doc.plain_text();
-
-c.onfocus = ()=>{
-  setTimeout(()=>{
-    text_area.focus();
-  });
-};
-
-
-function paint(){
-  ctx.clearRect(0,0,c.width,c.height);
-  doc.draw(ctx);
-
+function paint() {
+  ctx.clearRect(0, 0, canvas.width(), canvas.height());
+  doc.draw(ctx, canvas.height());
+  doc.draw_selection(ctx);
+  $('#selectionStart').val(doc.selection.start);
+  $('#selectionEnd').val(doc.selection.end);
+  ctx.beginPath();
+  ctx.moveTo(doc.width, 0);
+  ctx.lineTo(doc.width, canvas.height());
+  ctx.stroke();
 }
 
-// let X = <HTMLInputElement>document.querySelector('#selectionStart');
-// let Y = <HTMLInputElement>document.querySelector('#selectionEnd');
+let X = $('#selectionStart');
+let Y = $('#selectionEnd');
 
-// c.onmousedown = (ev)=>{
 
-//   console.log(c.offsetLeft,c.offsetTop)
-//   X.value = ev.pageX - c.offsetLeft;
-//   Y.value = ev.pageY - c.offsetTop;
-// };
+canvas.on('mousedown', (ev) => {
+  const offset = canvas.offset();
+  const x = ev.pageX - offset.left;
+  const y = ev.pageY - offset.top;
+  X.val(x);
+  Y.val(y);
+  
+  const start = performance.now();
+  const ch = doc.word_by_coordinate(x, y);
+  const end = performance.now();
+  console.log(ch);
+  doc.select(ch.ordinal, ch.ordinal);
+  paint();
+  const elapsedTime = end - start;
+  console.log(`paint time : ${elapsedTime}`);
+
+});
+
+paint();
+// doc.character_by_ordinal(512);

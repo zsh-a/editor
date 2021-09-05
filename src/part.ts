@@ -1,4 +1,4 @@
-import { ctx } from './doc';
+import { canvas_measure } from './doc';
 import { apply_run_style, ENTER, measure_text, NBSP } from './measure';
 
 import { Run } from './run';
@@ -19,7 +19,7 @@ export class Part{
         this.text = text;
 
         let is_newline = (text.length === 1) && (text[0] === '\n');
-        let m = measure_text(ctx,is_newline?NBSP:text,run);
+        let m = measure_text(canvas_measure,is_newline?NBSP:text,run);
         this.is_newline = is_newline;
         this.width = is_newline?0:m.width;
         this.ascent = m.fontBoundingBoxAscent;
