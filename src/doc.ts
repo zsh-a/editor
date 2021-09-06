@@ -57,8 +57,9 @@ export class Doc {
     width: number;
     words: Word[];
     lines: Line[];
-    selection: { start: 0, end: 0 };
+    selection: { start:number, end:number };
     caret_visable:boolean = true;
+    selection_changed:boolean = false;
 
     constructor() {
         this.selection = {start:0,end:0};
@@ -198,6 +199,7 @@ export class Doc {
     select(ordinal,ordinalEnd){
         this.selection.start = ordinal;
         this.selection.end = ordinalEnd;
+        this.caret_visable = true;
     }
     draw_selection(ctx:CanvasRenderingContext2D){
         const start = this.character_by_ordinal(this.selection.start);
@@ -266,5 +268,13 @@ export class Doc {
         if(this.selection.start === this.selection.end){
             this.caret_visable = !old;
         }
+    }
+
+    length(){
+        let cnt = 0;
+        for(let w of this.words){
+            cnt += w.plain_text.length;
+        }
+        return cnt;
     }
 }
