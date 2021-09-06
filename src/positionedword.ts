@@ -66,7 +66,7 @@ export class PositionedWord {
     }
 
     bounds() {
-        return new Rect(this.left, this.line.baseline + this.line.ascent, this.word.width // || newLineWidth(this.word.run)
+        return new Rect(this.left, this.line.baseline - this.line.ascent, this.word.width // || newLineWidth(this.word.run)
             , this.line.ascent + this.line.descent);
     }
 

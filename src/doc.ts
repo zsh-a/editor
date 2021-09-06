@@ -58,6 +58,7 @@ export class Doc {
     words: Word[];
     lines: Line[];
     selection: { start: 0, end: 0 };
+    caret_visable:boolean = true;
 
     constructor() {
         this.selection = {start:0,end:0};
@@ -155,7 +156,7 @@ export class Doc {
         }
     }
 
-    word_by_coordinate(x:number,y:number){
+    character_by_coordinate(x:number,y:number){
         let l = 0,r = this.lines.length - 1;
         while(l < r){
             let mid = l + r >> 1;
@@ -163,9 +164,15 @@ export class Doc {
             if(y < t) r = mid;
             else l = mid + 1;
         }
-        let row = l - 1;
+        let row;
+        if(this.lines[l].baseline - this.lines[l].ascent > y){
+            if(l >= 1) row = l - 1;
+            else row = 0;
+        }else{
+            row = this.lines.length - 1;
+        }
         let line = this.lines[row];
-        console.log(row);
+        // console.log(row);
 
         let pwords = line.positionedWords;
         l = 0, r = line.positionedWords.length - 1;
@@ -181,7 +188,7 @@ export class Doc {
         }else{
             word_idx = pwords.length - 1;
         }
-        console.log(word_idx)
+        // console.log(word_idx)
 
         let word = pwords[word_idx];
         let ch = word.character_by_coordinate(x);
@@ -195,12 +202,42 @@ export class Doc {
     draw_selection(ctx:CanvasRenderingContext2D){
         const start = this.character_by_ordinal(this.selection.start);
         const start_bounds = start.bounds();
-        const line = start.pword.line.bounds(false);
+        let line_bounds = start.pword.line.bounds(false);
         if(this.selection.start === this.selection.end){
             ctx.beginPath();
-            ctx.moveTo(start_bounds.left,line.top);
-            ctx.lineTo(start_bounds.left,line.top + line.height);
+            ctx.moveTo(start_bounds.left,line_bounds.top);
+            ctx.lineTo(start_bounds.left,line_bounds.top + line_bounds.height);
             ctx.stroke();
+        }else{
+            ctx.save();
+            ctx.fillStyle = 'rgba(0, 100, 200, 0.3)';
+            const end = this.character_by_ordinal(this.selection.end);
+            const end_bounds = end.bounds();
+            
+            if(start.pword.line.ordinal === end.pword.line.ordinal){
+                ctx.fillRect(start_bounds.left,line_bounds.top,end_bounds.left - start_bounds.left,line_bounds.height);
+            }else{
+                ctx.fillRect(start_bounds.left,line_bounds.top,line_bounds.width - start_bounds.left,line_bounds.height);
+                line_bounds = end.pword.line.bounds(false);
+                ctx.fillRect(line_bounds.left,line_bounds.top,end_bounds.left - line_bounds.left,line_bounds.height);
+                
+                let l = 0,r = this.lines.length - 1;
+                while(l < r){
+                    let mid = l + r >> 1;
+                    if(this.lines[mid].ordinal > start.ordinal) r = mid;
+                    else l = mid + 1;
+                }
+
+                if(this.lines[l].ordinal > start.ordinal){
+                    for(let i = l;;i++){
+                        let line = this.lines[i];
+                        if(line.ordinal + line.length > end.ordinal) break;
+                        line_bounds = line.bounds(false);
+                        ctx.fillRect(line_bounds.left,line_bounds.top,line_bounds.width,line_bounds.height);
+                    }
+                }
+            }
+            ctx.restore();
         }
     }
 
@@ -222,5 +259,12 @@ export class Doc {
         }
         let word = line.positionedWords[l];
         return word.character_by_ordinal(index);
+    }
+
+    toggle_caret(){
+        const old = this.caret_visable;
+        if(this.selection.start === this.selection.end){
+            this.caret_visable = !old;
+        }
     }
 }
