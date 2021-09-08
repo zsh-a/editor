@@ -7,20 +7,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vite App</title>
 </head>
-<!-- <style>
-  .unselectable {
-      -moz-user-select: -moz-none;
-      -khtml-user-select: none;
-      -webkit-user-select: none;
-      -ms-user-select: none;
-      user-select: none;
+<style>
+  #editor-div {
+    border: 1px solid silver;
   }
-</style> -->
+</style>
+
 <body>
   <!-- <div id="app"></div> -->
   <canvas id="measure" hidden></canvas>
-  <div><input type="text" id="selectionStart"><input type="text" id="selectionEnd"></div>
-  <div id="editor-div" style="overflow: auto; width: 520px; height: 500px;"></div>
+  <div id="editor-div" style="position: absolute; left: 10px; top: 10px; right: 10px; bottom: 10px;"></div>
   <script type="module" src="/src/main.ts"></script>
 </body>
 

@@ -25,32 +25,28 @@ export class Word{
     ascent:number;
     descent:number;
     width:number;
+    align:string;
     plain_text:string;
-    constructor(text:Section,space:Section){
-
-        // var text, space;
-        // if (!coords) {
-        //     // special end-of-document marker, mostly like a newline with no formatting
-        //     text = [{ text: measure.enter }];
-        //     return Object.create(prototype, {
-        //         text: { value: section(text) },
-        //         space: { value: section([]) },
-        //         ascent: { value: text.ascent },
-        //         descent: { value: text.descent },
-        //         width: { value: text.width },
-        //         eof: { value: true }
-        //     });
-        // }
+    _eof:boolean;
+    constructor(text:Section,space:Section,align?:string,eof?:boolean){
         this.text = text;
         this.space = space;
+        this.align = align;
+        this._eof = eof;
         this.ascent = Math.max(this.text.ascent,this.space.ascent);
         this.descent = Math.max(this.text.descent,this.space.descent);
         this.width = this.text.width + this.space.width;
         this.plain_text = this.text.plain_text + this.space.plain_text;
     }
+
+    // static eof(){
+    //     let word = new Word(new Section([new Part(null,)]));
+    // }
     is_newline(){
         return this.text.parts.length == 1 && this.text.parts[0].is_newline;
     }
+
+
 
     draw(ctx:CanvasRenderingContext2D,x:number,y:number){
         for(let part of this.text.parts){

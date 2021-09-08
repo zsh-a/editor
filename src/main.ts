@@ -1,7 +1,8 @@
 import { Doc, SIMPLE_TEXT } from './doc';
 import './style.css'
-import $ from 'jquery';
+
 import { positionedChar } from './positionedword';
+import { HUGE_DOCUMENT } from './huge_doc';
 // const app = document.querySelector<HTMLDivElement>('#app')!
 
 // app.innerHTML = `
@@ -12,19 +13,23 @@ import { positionedChar } from './positionedword';
 // https://www.catch22.net/tuts/neatpad/loading-text-file#
 
 
-const editor_div = $('#editor-div');
-if (editor_div.css('position') != 'absolute') {
-  editor_div.css('position', 'relative');
-}
+const editor_div = document.querySelector('#editor-div');
 
-var canvas = $('<canvas width="500" height="1500"></canvas>'),
-  textAreaDiv = $('<div style="overflow: hidden; position: absolute; height: 0;"></div>'),
-  text_area = $('<textarea autocorrect="off" autocapitalize="off" spellcheck="false" tabindex="0" ' +
-    'style="position: absolute; padding: 0px; width: 1000px; height: 1em; ' +
-    'outline: none; font-size: 4px;"></textarea>');
+// var canvas = $('<canvas width="100" height="100"></canvas>'),
+//   textAreaDiv = $('<div style="overflow: hidden; position: absolute; height: 0;"></div>'),
+//   text_area = $('<textarea autocorrect="off" autocapitalize="off" spellcheck="false" tabindex="0" ' +
+//     'style="position: absolute; padding: 0px; width: 1000px; height: 1em; ' +
+//     'outline: none; font-size: 4px;"></textarea>');
+editor_div.innerHTML = '<canvas  width="100" height="100" class="editro-canvas"></canvas>' +
+                        '<div style="overflow: hidden; position: absolute; height: 0;">' +
+                            '<textarea autocorrect="off" autocapitalize="off" spellcheck="false" tabindex="0" ' +
+                            'style="position: absolute; padding: 0px; width: 1000px; height: 1em; ' +
+                            'outline: none; font-size: 4px;"></textarea>'
+                        '</div>';
 
-textAreaDiv.append(text_area);
-editor_div.append(canvas, textAreaDiv);
+var canvas = <HTMLCanvasElement>editor_div.querySelector('.editro-canvas');
+var textArea_div = editor_div.querySelector('div');
+var text_area = editor_div.querySelector('textarea');
 
 
 // const canvas = $('#canvas');
@@ -37,16 +42,10 @@ editor_div.append(canvas, textAreaDiv);
 // const dpr = Math.max(1,window.devicePixelRatio || 1);
 
 // const ctx = c[0].getContext("2d");
-const ctx = (<HTMLCanvasElement>canvas[0]).getContext('2d');
+const ctx = canvas.getContext('2d');
 
 let focus_char;
 let doc = new Doc();
-doc.width = canvas.width();
-
-let ss = new Date();
-doc.load(SIMPLE_TEXT);
-let ee = new Date().getTime() - ss.getTime();
-console.log("load time " + ee + 'ms');
 
 // console.log(doc.words);
 // console.log(doc.lines);
@@ -59,9 +58,11 @@ doc.on('select', (index) => {
 });
 var typing_chinese = false;
 
-text_area.on('input', () => {
+text_area.addEventListener('input', () => {
   if (typing_chinese) return;
-  const newText = text_area.val();
+  const s = performance.now();
+  const newText = text_area.value;
+  console.log(`new text ${newText}`)
   if (text_area_content != newText) {
     text_area_content = '';
 
@@ -69,7 +70,7 @@ text_area.on('input', () => {
     doc.selection.end += doc.selection_range().set_text(newText);
     doc.selection.start = doc.selection.end;
 
-    text_area.val('');
+    text_area.value = '';
     paint();
     // var char = doc.character_by_ordinal(doc.selection.start);
     // if (char) {
@@ -78,15 +79,18 @@ text_area.on('input', () => {
     //     paint();
     // }
   }
+  const e = performance.now();
+  const elapsedTime = e - s;
+  console.log(`insert time : ${elapsedTime}`);
 });
 
-text_area.on('compositionstart', () => {
+text_area.addEventListener('compositionstart', () => {
   typing_chinese = true;
 });
 
-text_area.on('compositionend', () => {
+text_area.addEventListener('compositionend', () => {
   // console.log(`compositionend : ${text_area.val()}`);
-  const newText = text_area.val();
+  const newText = text_area.value;
   if (text_area_content != newText) {
     text_area_content = '';
 
@@ -94,7 +98,7 @@ text_area.on('compositionend', () => {
     doc.selection.end += doc.selection_range().set_text(newText);
     doc.selection.start = doc.selection.end;
 
-    text_area.val('');
+    text_area.value = '';
     paint();
     // var char = doc.character_by_ordinal(doc.selection.start);
     // if (char) {
@@ -103,6 +107,7 @@ text_area.on('compositionend', () => {
     //     paint();
     // }
   }
+  typing_chinese = false;
 });
 // c.onfocus = ()=>{
 //   setTimeout(()=>{
@@ -119,39 +124,52 @@ text_area.on('compositionend', () => {
 
 function paint() {
   // const start = performance.now();
-  ctx.clearRect(0, 0, canvas.width(), canvas.height());
-  doc.draw(ctx, canvas.height());
+
+  if (doc.width() !== editor_div.clientWidth) {
+      doc.width(editor_div.clientWidth);
+  }
+
+  canvas.width = editor_div.clientWidth;
+  canvas.height = Math.max(doc.height, editor_div.clientHeight);
+  if (doc.height < editor_div.clientHeight) {
+    editor_div.style.overflow = 'hidden';
+  } else {
+    editor_div.style.overflow = 'auto';
+  }
+  if (editor_div.clientWidth < canvas.width) {
+      doc.width(editor_div.clientWidth);
+  }
+  
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  doc.draw(ctx);
+  
+  if (select_drag_start || (editor_div.activeElement === text_area)) {
+  }
   doc.draw_selection(ctx);
-  $('#selectionStart').val(doc.selection.start);
-  $('#selectionEnd').val(doc.selection.end);
-  ctx.beginPath();
-  ctx.moveTo(doc.width, 0);
-  ctx.lineTo(doc.width, canvas.height());
-  ctx.stroke();
+
+  // doc.draw_selection(ctx);
   // const end = performance.now();
   // const elapsedTime = end - start;
   // console.log(`paint time : ${elapsedTime}`);
 }
 
 function update_textarea() {
+  focus_char = focus_char === null ? doc.selection.end : focus_char;
+  const end_pos = doc.character_by_ordinal(focus_char);
+  if (end_pos.pchar) {
+    const bounds = end_pos.pchar.bounds();
+    textArea_div.style.left = bounds.left + 'px';
+    textArea_div.style.top = bounds.top + 'px';
+    text_area.focus();
+  }
+  text_area_content = doc.selection_range().plain_text();
+  text_area.value = text_area_content;
+  text_area.select();
   setTimeout(() => {
-    text_area.trigger('blur');
-    focus_char = focus_char === null ? doc.selection.end : focus_char;
-    const end_pos = doc.character_by_ordinal(focus_char);
-    if (end_pos.pchar) {
-      const bounds = end_pos.pchar.bounds();
-      textAreaDiv.css({ left: bounds.left, top: bounds.top + bounds.height });
-      text_area.trigger('focus');
-      textAreaDiv.css({ left: bounds.left, top: bounds.top });
-    }
-    text_area_content = '';
-    text_area.trigger('select');
-    text_area.trigger('focus');
+    text_area.focus();
   }, 10);
 }
-
-let X = $('#selectionStart');
-let Y = $('#selectionEnd');
 
 let select_drag_start = null;
 let hover_char: positionedChar;
@@ -165,12 +183,10 @@ function select(start: number, end: number) {
   doc.dispatch_event('select', start);
 }
 
-canvas.on('mousedown', (ev) => {
-  const offset = canvas.offset();
-  const x = ev.pageX - offset.left;
-  const y = ev.pageY - offset.top;
-  X.val(x);
-  Y.val(y);
+canvas.addEventListener('mousedown', (ev) => {
+  const rect = canvas.getBoundingClientRect();
+  const x = ev.pageX - rect.left;
+  const y = ev.pageY - rect.top;
 
   const ch = doc.character_by_coordinate(x, y);
   select_drag_start = ch.ordinal;
@@ -178,10 +194,10 @@ canvas.on('mousedown', (ev) => {
   select(ch.ordinal, ch.ordinal);
 });
 
-canvas.on('mousemove', (ev) => {
-  const offset = canvas.offset();
-  const x = ev.pageX - offset.left;
-  const y = ev.pageY - offset.top;
+canvas.addEventListener('mousemove', (ev) => {
+  const rect = canvas.getBoundingClientRect();
+  const x = ev.pageX - rect.left;
+  const y = ev.pageY - rect.top;
   if (select_drag_start !== null) {
     const new_hover_char = doc.character_by_coordinate(x, y);
     hover_char = new_hover_char;
@@ -196,23 +212,22 @@ canvas.on('mousemove', (ev) => {
   }
 });
 
-canvas.on('mouseup', () => {
+canvas.addEventListener('mouseup', () => {
   select_drag_start = null;
   keyboardX = null;
   update_textarea();
-  text_area.trigger('focus');
+  text_area.focus();
 });
 
 setInterval(function () {
   if (doc.toggle_caret())
     paint();
-
 }, 500);
 
 var keyboardSelect = 0, keyboardX = null;
 let text_area_content = '';
 
-text_area.on('keydown', (ev) => {
+text_area.addEventListener('keydown', (ev) => {
   // console.log(ev.key,typeof ev.key)
 
     const s = performance.now();
@@ -262,6 +277,7 @@ text_area.on('keydown', (ev) => {
       }
       keyboardX = null;
       handled = true;
+      changing_caret = true;
       break;
     case "ArrowRight":
       if (!selecting && start != end) {
@@ -273,12 +289,15 @@ text_area.on('keydown', (ev) => {
       }
       keyboardX = null;
       handled = true;
+      changing_caret = true;
       break;
     case "ArrowUp":
       change_line(-1);
+      changing_caret = true;
       break;
     case "ArrowDown":
       change_line(1);
+      changing_caret = true;
       break;
     case "Backspace":
       if (start === end && start > 0) {
@@ -296,6 +315,17 @@ text_area.on('keydown', (ev) => {
       }
       break;
   }
+
+
+  if (ev.ctrlKey) {
+    // var selRange = doc.selectedRange();
+    // var format = {};
+    // format[toggle] = selRange.getFormatting()[toggle] !== true;
+    // selRange.setFormatting(format);
+    doc.width();
+    paint();
+    handled = true;
+}
   if (changing_caret) {
     switch (keyboardSelect) {
       case 0:
@@ -329,4 +359,8 @@ text_area.on('keydown', (ev) => {
   console.log(ev.key);
 });
 
+let ss = new Date();
+doc.load(SIMPLE_TEXT);
+let ee = new Date().getTime() - ss.getTime();
+console.log("load time " + ee + 'ms');
 paint();

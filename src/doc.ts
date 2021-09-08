@@ -9,7 +9,8 @@ const c = <HTMLCanvasElement>document.querySelector("#measure");
 export const canvas_measure = c.getContext("2d");
 // console.log(canvas_measure)
 export const SIMPLE_TEXT = [
-    { text: '    Crampton Wick,\n    26th Oct 2013\n\n' },
+    { text: '    Crampton Wick,\n    26th Oct 2013\n\n'},
+    { text: 'hello world\n',align:'center'},
     { text: 'Dear sir/madam,\n\nWith reference to your account ' },
     { text: 'No. 17598732', bold: true },
     {
@@ -57,7 +58,8 @@ function isspace(c) {
     return c === ' ';
 }
 export class Doc {
-    width: number;
+    _width: number;
+    height:number;
     words: Word[];
     lines: Line[];
     selection: { start:number, end:number };
@@ -65,8 +67,16 @@ export class Doc {
     selection_changed:boolean = false;
 
     constructor() {
+        this.height = 0;
         this.selection = {start:0,end:0};
         this.event_handler = {};
+    }
+
+    width(width?:number){
+        if(!width) return this._width;
+        this._width = width;
+        this.layout();
+        return this._width;
     }
 
     range(start:number,end:number){
@@ -114,7 +124,7 @@ export class Doc {
                     }
                 }
             }
-            words.push(new Word(new Section(text_parts), new Section(space_parts)));
+            words.push(new Word(new Section(text_parts), new Section(space_parts),(text_parts[0] && text_parts[0].run.align) || (space_parts[0] && space_parts[0].run.align)));
         }
         return words;
     }
@@ -124,6 +134,7 @@ export class Doc {
         this.layout();
     }
     layout() {
+        const _s = performance.now();
         this.lines = [];
         let words = new Array<Word>();
         let line_width = 0;
@@ -131,6 +142,10 @@ export class Doc {
         let max_descent = 0;
         let ordinal = 0;
         let y = 0;
+
+        if(!this.words[this.words.length - 1]._eof){
+            this.words.push(new Word(new Section([new Part(Run.eof,0,1)]),new Section([]),null,true));
+        }
 
         function newline(self: Doc) {
             const line = new Line(self, line_width, y + max_ascent, max_ascent, max_descent, words, ordinal);
@@ -143,7 +158,7 @@ export class Doc {
             max_ascent = 0;
         }
         for (let word of this.words) {
-            if (word.width + line_width > this.width) {
+            if (word.width + line_width > this.width()) {
                 newline(this);
             }
             line_width += word.width;
@@ -154,6 +169,14 @@ export class Doc {
                 newline(this);
             }
         }
+        
+        if(words.length > 0){
+            newline(this);
+        }
+        const last_line = this.lines[this.lines.length - 1];
+        this.height = !last_line?0:last_line.baseline + last_line.descent;
+        const _e = performance.now();
+        console.log(`layout time : ${_e - _s}`);
     }
 
     plain_text(){
@@ -163,7 +186,8 @@ export class Doc {
         }
         return text;
     }
-    draw(ctx: CanvasRenderingContext2D,bottom:number) {
+    draw(ctx: CanvasRenderingContext2D,bottom?:number) {
+        bottom = bottom || Number.MAX_VALUE;
         for (let line of this.lines) {
             if(line.baseline - line.ascent > bottom) break;
             line.draw(ctx);
@@ -276,7 +300,6 @@ export class Doc {
         }
         let word = line.positionedWords[l];
         return new Position(this,line_no,l,word.character_by_ordinal(index));
-        // return {line_no:line_no,pword_no:l,value:word.character_by_ordinal(index)}
     }
 
     toggle_caret(){
@@ -293,11 +316,10 @@ export class Doc {
     }
 
     length(){
-        let cnt = 0;
-        for(let w of this.words){
-            cnt += w.plain_text.length;
-        }
-        return cnt;
+        const line_length = this.lines.length;
+        const pw_length = this.lines[line_length - 1].positionedWords.length;
+        const last_pw = this.lines[line_length - 1].positionedWords[pw_length - 1];
+        return last_pw.ordinal + last_pw.length; 
     }
 
     event_handler:{};
@@ -367,8 +389,16 @@ export class Doc {
         let suffix:positionedChar[];
 
         if(end_pchar.ordinal === end_pword.ordinal){
-            // the last character in the pword
-            suffix = end_pword.characters;
+            if(end_pchar.ordinal === this.length()){
+                // todo
+                // process the end of file symbol
+                suffix = [];
+                end_word_index--;
+            }else{
+                // the last character in the pword
+                suffix = end_pword.characters;
+            }
+
         }else{
             suffix = end_word_chars.slice(end_pchar.ordinal - end_pword.ordinal);
         }
@@ -395,6 +425,9 @@ export class Position{
         this.line_no = line_no;
         this.pword_no = pword_no;
         this.pchar = pchar;
+    }
+    equal(o:Position){
+        return o.doc === this.doc && o.line_no === this.line_no && o.pword_no === this.pword_no && this.pchar === o.pchar;
     }
 
     previous(){

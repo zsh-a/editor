@@ -1,33 +1,43 @@
+import { Doc } from "./doc";
 import { PositionedWord } from "./positionedword";
 import { Rect } from "./rect";
 import { Word } from "./word";
 
 export class Line {
-    doc;
+    doc:Doc;
     width: number;
     baseline: number;
     ascent: number;
     descent: number;
     ordinal: number;
     length: number;
+    align:string;
     positionedWords: PositionedWord[];
-    constructor(doc,width, baseline:number, ascent:number, descent:number, words: Word[], ordinal:number) {
+    constructor(doc:Doc,width:number, baseline:number, ascent:number, descent:number, words: Word[], ordinal:number) {
         this.doc = doc;
         this.width = width;
         this.baseline = baseline;
         this.ascent = ascent;
         this.descent = descent;
         this.ordinal = ordinal;
+        this.align = words[0].align;
         let x = 0;
         
         let idx = ordinal;
         this.positionedWords = new Array<PositionedWord>();
+        let offset = 0;
+        switch(this.align){
+            case 'center':
+                offset = (doc.width() - this.width) / 2;
+                break;
+        }
         for(let word of words){
-            this.positionedWords.push(new PositionedWord(word,this,x,idx));
+            this.positionedWords.push(new PositionedWord(word,this,x + offset,idx));
             x += word.width;
             idx += word.text.length + word.space.length;
         }
         this.length = idx - this.ordinal;
+        
     }
     draw(ctx: CanvasRenderingContext2D) {
         for (let word of this.positionedWords) {

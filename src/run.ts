@@ -13,6 +13,8 @@ export class Run{
     script?:boolean;
     size?:number;
     font?:string;
+    
+    static eof = new Run('⛔');
 
     constructor(text?:string,bold?:boolean){
         this.text = text;
