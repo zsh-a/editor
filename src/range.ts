@@ -1,4 +1,5 @@
 import { Doc } from "./doc";
+import { Run } from "./run";
 
 export class Range{
     doc:Doc;
@@ -24,6 +25,20 @@ export class Range{
 
     set_text(text){
         return this.doc.splice(this.start,this.end,text);
+    }
+    save(){
+        // let pos = this.doc.character_by_ordinal(this.start);
+        // const end_pos = this.doc.character_by_ordinal(this.end);
+        // let res = [];
+        // Run.clone(pos.pchar.pword.word.text.parts)
+        // while(pos.pchar.ordinal < end_pos.pchar.ordinal){
+
+        // }
+        // res.push(run)
+
+    }
+    set_formating(){
+
     }
     clear(){
         return this.doc.splice(this.start,this.end,[]);

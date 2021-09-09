@@ -8,15 +8,77 @@
   <title>Vite App</title>
 </head>
 <style>
-  #editor-div {
-    border: 1px solid silver;
-  }
+    #exampleToolbar {
+        position: absolute;
+        left: 10px;
+        top: 10px;
+        right: 10px;
+        height: 30px;
+    }
+
+    #editor-div {
+        border: 1px solid silver;
+        position: absolute;
+        left: 10px;
+        top: 40px;
+        right: 10px;
+        bottom: 10px;
+    }
+
+    button img {
+        width: 12px;
+        height: 12px;
+    }
 </style>
 
 <body>
   <!-- <div id="app"></div> -->
+  <div id="exampleToolbar">
+    <select id="font">
+        <option>Helvetica</option>
+        <option>Times</option>
+        <option>Georgia</option>
+        <option>Courier</option>
+    </select>
+    <select id="size">
+        <option>8</option>
+        <option>9</option>
+        <option>10</option>
+        <option>11</option>
+        <option>12</option>
+        <option>14</option>
+        <option>16</option>
+        <option>18</option>
+        <option>20</option>
+        <option>24</option>
+        <option>36</option>
+        <option>72</option>
+    </select>
+    <label><input type="checkbox" id="bold"> <strong>B</strong></label> |
+    <label><input type="checkbox" id="italic"> <em>i</em></label> |
+    <label><input type="checkbox" id="underline"> <u>u</u></label> |
+    <label><input type="checkbox" id="strikeout"> <strike>s</strike></label>
+    <select id="align">
+        <option value="left">Left</option>
+        <option value="center">Center</option>
+        <option value="right">Right</option>
+        <option value="justify">Justify</option>
+    </select>
+    <select id="script">
+        <option value="normal">Normal</option>
+        <option value="super">Superscript</option>
+        <option value="sub">Subscript</option>
+    </select>
+    <select id="color">
+        <option value="black">Black</option>
+        <option value="red">Red</option>
+        <option value="green">Green</option>
+        <option value="blue">Blue</option>
+    </select>
+    <!-- <button id="smiley"><img src="smiley.png"></button> -->
+</div>
   <canvas id="measure" hidden></canvas>
-  <div id="editor-div" style="position: absolute; left: 10px; top: 10px; right: 10px; bottom: 10px;"></div>
+  <div id="editor-div" ></div>
   <script type="module" src="/src/main.ts"></script>
 </body>
 

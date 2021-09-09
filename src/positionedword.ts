@@ -69,12 +69,7 @@ export class PositionedWord {
         return new Rect(this.left, this.line.baseline - this.line.ascent, this.word.width // || newLineWidth(this.word.run)
             , this.line.ascent + this.line.descent);
     }
-
-    parts(eachPart) {
-        this.word.text.parts.some(eachPart) ||
-            this.word.space.parts.some(eachPart);
-    }
-
+    
     realiseCharacters() {
         if (!this.characters) {
             this.characters = new Array<positionedChar>();

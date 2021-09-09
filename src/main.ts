@@ -1,8 +1,9 @@
-import { Doc, SIMPLE_TEXT } from './doc';
+import { Doc, Events, SIMPLE_TEXT } from './doc';
 import './style.css'
 
 import { positionedChar } from './positionedword';
 import { HUGE_DOCUMENT } from './huge_doc';
+import { TEXT_DEFAULT_STYLE } from './measure';
 // const app = document.querySelector<HTMLDivElement>('#app')!
 
 // app.innerHTML = `
@@ -21,11 +22,11 @@ const editor_div = document.querySelector('#editor-div');
 //     'style="position: absolute; padding: 0px; width: 1000px; height: 1em; ' +
 //     'outline: none; font-size: 4px;"></textarea>');
 editor_div.innerHTML = '<canvas  width="100" height="100" class="editro-canvas"></canvas>' +
-                        '<div style="overflow: hidden; position: absolute; height: 0;">' +
-                            '<textarea autocorrect="off" autocapitalize="off" spellcheck="false" tabindex="0" ' +
-                            'style="position: absolute; padding: 0px; width: 1000px; height: 1em; ' +
-                            'outline: none; font-size: 4px;"></textarea>'
-                        '</div>';
+  '<div style="overflow: hidden; position: absolute; height: 0;">' +
+  '<textarea autocorrect="off" autocapitalize="off" spellcheck="false" tabindex="0" ' +
+  'style="position: absolute; padding: 0px; width: 1000px; height: 1em; ' +
+  'outline: none; font-size: 4px;"></textarea>'
+'</div>';
 
 var canvas = <HTMLCanvasElement>editor_div.querySelector('.editro-canvas');
 var textArea_div = editor_div.querySelector('div');
@@ -42,8 +43,9 @@ var text_area = editor_div.querySelector('textarea');
 // const dpr = Math.max(1,window.devicePixelRatio || 1);
 
 // const ctx = c[0].getContext("2d");
-const ctx = canvas.getContext('2d');
 
+const format_button = ['font', 'size', 'bold', 'italic', 'underline', 'strikeout', 'align', 'script', 'color'];
+const ctx = canvas.getContext('2d');
 let focus_char;
 let doc = new Doc();
 
@@ -53,8 +55,38 @@ let doc = new Doc();
 
 // text_area.val(doc.plain_text());
 
-doc.on('select', (index) => {
-  console.log(`doc selected ${index}`);
+
+for (let id of format_button) {
+  const elem = document.querySelector(`#${id}`);
+
+  elem.addEventListener('change', (e) => {
+    let formatting = {};
+    var val = elem.nodeName === 'INPUT' ? elem.checked : elem.value;
+    formatting[id] = val;
+    // console.log(formatting)
+    // range.setFormatting(formatting);
+    // exampleEditor.paint();
+  });
+
+  // doc.on(Doc.Events.SELECTION_CHANGE, (get_formatting) => {
+  //   var formatting = get_formatting();
+  //   var val = id in formatting ? formatting[id] : TEXT_DEFAULT_STYLE[id];
+  //   if (elem.nodeName === 'INPUT') {
+  //     if (val === carota.runs.multipleValues) {
+  //       elem.indeterminate = true;
+  //     } else {
+  //       elem.indeterminate = false;
+  //       elem.checked = val;
+  //     }
+  //   } else {
+  //     elem.value = val;
+  //   }
+  // });
+}
+
+doc.on(Doc.Events.SELECTION_CHANGE, (start,end) => {
+  // console.log(`doc selected ${start},${end}`);
+  doc.range(5,20).save();
 });
 var typing_chinese = false;
 
@@ -126,7 +158,7 @@ function paint() {
   // const start = performance.now();
 
   if (doc.width() !== editor_div.clientWidth) {
-      doc.width(editor_div.clientWidth);
+    doc.width(editor_div.clientWidth);
   }
 
   canvas.width = editor_div.clientWidth;
@@ -137,13 +169,13 @@ function paint() {
     editor_div.style.overflow = 'auto';
   }
   if (editor_div.clientWidth < canvas.width) {
-      doc.width(editor_div.clientWidth);
+    doc.width(editor_div.clientWidth);
   }
-  
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   doc.draw(ctx);
-  
+
   if (select_drag_start || (editor_div.activeElement === text_area)) {
   }
   doc.draw_selection(ctx);
@@ -180,7 +212,7 @@ function select(start: number, end: number) {
   paint();
   if (!select_drag_start)
     update_textarea();
-  doc.dispatch_event('select', start);
+  doc.dispatch_event(Doc.Events.SELECTION_CHANGE, start,end);
 }
 
 canvas.addEventListener('mousedown', (ev) => {
@@ -230,8 +262,8 @@ let text_area_content = '';
 text_area.addEventListener('keydown', (ev) => {
   // console.log(ev.key,typeof ev.key)
 
-    const s = performance.now();
-  
+  const s = performance.now();
+
 
   let start = doc.selection.start;
   let end = doc.selection.end;
@@ -273,14 +305,14 @@ text_area.addEventListener('keydown', (ev) => {
       } else {
 
         if (ordinal > 0) {
-          if(ev.ctrlKey){
-            const pos =  doc.character_by_ordinal(ordinal);
-            if(pos.pchar.ordinal === pos.pchar.pword.ordinal){
+          if (ev.ctrlKey) {
+            const pos = doc.character_by_ordinal(ordinal);
+            if (pos.pchar.ordinal === pos.pchar.pword.ordinal) {
               ordinal = pos.previous_pword().pchar.ordinal;
-            }else{
+            } else {
               ordinal = pos.pchar.pword.ordinal;
             }
-          }else{
+          } else {
             ordinal--;
           }
         }
@@ -294,10 +326,10 @@ text_area.addEventListener('keydown', (ev) => {
         ordinal = end;
       } else {
         if (ordinal < doc_length) {
-          if(ev.ctrlKey){
-            const pos =  doc.character_by_ordinal(ordinal);
+          if (ev.ctrlKey) {
+            const pos = doc.character_by_ordinal(ordinal);
             ordinal = pos.next_pword().pchar.ordinal;
-          }else{
+          } else {
             ordinal++;
           }
         }
@@ -379,28 +411,28 @@ var focus = false;
 var cached_width = editor_div.clientWidth;
 var cached_height = editor_div.clientHeight;
 
-function update(){
+function update() {
   let repaint = false;
   let new_focused = editor_div.activeElement === text_area;
-  if(focus !== new_focused){
+  if (focus !== new_focused) {
     focus = new_focused;
     repaint = true;
   }
   const now = new Date().getTime();
-  if(now > next_caret_toggle){
+  if (now > next_caret_toggle) {
     next_caret_toggle = now + 500;
-    if(doc.toggle_caret()){
+    if (doc.toggle_caret()) {
       repaint = true;
     }
   }
 
-  if(editor_div.clientWidth !== cached_width || editor_div.clientHeight !== cached_height){
+  if (editor_div.clientWidth !== cached_width || editor_div.clientHeight !== cached_height) {
     repaint = true;
     cached_width = editor_div.clientWidth;
     cached_height = editor_div.clientHeight;
   }
 
-  if(repaint)
+  if (repaint)
     paint();
 }
 

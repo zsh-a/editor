@@ -66,6 +66,8 @@ export class Doc {
     caret_visable:boolean = true;
     selection_changed:boolean = false;
 
+    static Events = {SELECTION_CHANGE:'selection-change'};
+
     constructor() {
         this.height = 0;
         this.selection = {start:0,end:0};
@@ -330,11 +332,11 @@ export class Doc {
         this.event_handler[event_name].push(handler);
     }
 
-    dispatch_event(event_name:string,args){
+    dispatch_event(event_name:string,...args){
         let handlers = this.event_handler[event_name];
         if(handlers){
             for(let handle of handlers){
-                handle(args);
+                handle(...args);
             }
         }
     }
