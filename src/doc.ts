@@ -389,7 +389,8 @@ export class Doc {
         let suffix:positionedChar[];
 
         if(end_pchar.ordinal === end_pword.ordinal){
-            if(end_pchar.ordinal === this.length()){
+            // exlude the end symbol
+            if(end_pchar.ordinal === this.length() - 1){
                 // todo
                 // process the end of file symbol
                 suffix = [];
@@ -454,6 +455,25 @@ export class Position{
         return this;
     }
 
+    previous_pword(){
+        if(this.pword_no > 0){
+            this.pword_no--;
+            const pword_chars = this.doc.lines[this.line_no].positionedWords[this.pword_no].positioned_characters();
+            this.pchar = pword_chars[0];
+            return this;
+        }
+
+        if(this.line_no > 0){
+            this.line_no--;
+            const line = this.doc.lines[this.line_no];
+            this.pword_no = line.positionedWords.length - 1;
+            const pword = line.positionedWords[this.pword_no];
+            this.pchar = pword.positioned_characters()[0];
+            return this;
+        }
+        return this;
+    }
+
     next(){
         let index_in_pword = this.pchar.ordinal - this.pchar.pword.ordinal;
 
@@ -463,6 +483,23 @@ export class Position{
         }
         let line = this.pchar.pword.line;
         
+        if(this.pword_no + 1 < line.positionedWords.length){
+            this.pword_no++;
+            this.pchar = line.positionedWords[this.pword_no].positioned_characters()[0];
+            return this;
+        }
+
+        if(this.line_no + 1 < this.doc.lines.length){
+            this.line_no++;
+            this.pword_no = 0;
+            this.pchar = this.doc.lines[this.line_no].positionedWords[0].positioned_characters()[0];
+            return this;
+        }
+        return this;
+    }
+
+    next_pword(){
+        let line = this.pchar.pword.line;
         if(this.pword_no + 1 < line.positionedWords.length){
             this.pword_no++;
             this.pchar = line.positionedWords[this.pword_no].positioned_characters()[0];

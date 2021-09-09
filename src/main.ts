@@ -271,8 +271,18 @@ text_area.addEventListener('keydown', (ev) => {
       if (!selecting && start != end) {
         ordinal = start;
       } else {
+
         if (ordinal > 0) {
-          ordinal--;
+          if(ev.ctrlKey){
+            const pos =  doc.character_by_ordinal(ordinal);
+            if(pos.pchar.ordinal === pos.pchar.pword.ordinal){
+              ordinal = pos.previous_pword().pchar.ordinal;
+            }else{
+              ordinal = pos.pchar.pword.ordinal;
+            }
+          }else{
+            ordinal--;
+          }
         }
       }
       keyboardX = null;
@@ -284,7 +294,12 @@ text_area.addEventListener('keydown', (ev) => {
         ordinal = end;
       } else {
         if (ordinal < doc_length) {
-          ordinal++;
+          if(ev.ctrlKey){
+            const pos =  doc.character_by_ordinal(ordinal);
+            ordinal = pos.next_pword().pchar.ordinal;
+          }else{
+            ordinal++;
+          }
         }
       }
       keyboardX = null;
@@ -325,7 +340,7 @@ text_area.addEventListener('keydown', (ev) => {
     doc.width();
     paint();
     handled = true;
-}
+  }
   if (changing_caret) {
     switch (keyboardSelect) {
       case 0:
@@ -359,8 +374,38 @@ text_area.addEventListener('keydown', (ev) => {
   console.log(ev.key);
 });
 
+var next_caret_toggle = new Date().getTime();
+var focus = false;
+var cached_width = editor_div.clientWidth;
+var cached_height = editor_div.clientHeight;
+
+function update(){
+  let repaint = false;
+  let new_focused = editor_div.activeElement === text_area;
+  if(focus !== new_focused){
+    focus = new_focused;
+    repaint = true;
+  }
+  const now = new Date().getTime();
+  if(now > next_caret_toggle){
+    next_caret_toggle = now + 500;
+    if(doc.toggle_caret()){
+      repaint = true;
+    }
+  }
+
+  if(editor_div.clientWidth !== cached_width || editor_div.clientHeight !== cached_height){
+    repaint = true;
+    cached_width = editor_div.clientWidth;
+    cached_height = editor_div.clientHeight;
+  }
+
+  if(repaint)
+    paint();
+}
+
 let ss = new Date();
 doc.load(SIMPLE_TEXT);
 let ee = new Date().getTime() - ss.getTime();
 console.log("load time " + ee + 'ms');
-paint();
+update();
