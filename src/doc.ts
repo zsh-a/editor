@@ -1,54 +1,12 @@
 import { Line } from "./line";
 import { Part } from "./part";
 import { Section, Word } from "./word";
-import {Range} from './range';
-import { positionedChar, PositionedWord } from "./positionedword";
+import { Range } from './range';
+import { positionedChar } from "./positionedword";
 import { FORMATTING_KEYS, Run } from "./run";
 
 const c = <HTMLCanvasElement>document.querySelector("#measure");
 export const canvas_measure = c.getContext("2d");
-// console.log(canvas_measure)
-export const SIMPLE_TEXT = [
-    { text: '    Crampton Wick,\n    26th Oct 2013\n\n'},
-    { text: 'hello world\n',align:'center'},
-    { text: 'Dear sir/madam,\n\nWith reference to your account ' },
-    { text: 'No. 17598732', bold: true },
-    {
-        text: ', it is with the utmost regret that we have to inform you that your contract with us ' +
-            'has been '
-    },
-    { text: 'terminated forth', italic: true },
-    { text: 'with', italic: true, bold: true },
-    { text: '.\n\n    Please find enclosed a portrait of ' },
-    { text: 'Her Majesty Queen Victoria', size: 24, color: 'red', font: 'Times' },
-    { text: ' brushing a gibbon\'s hair.\n\nYours, etc.\n\n' },
-    { text: '     Fernando Degroot, Esq.\n     Persistent Undersecretary to His Lordship\n\n' },
-    {
-        text: 'Children are being urged to take back their "wild time", swapping 30 minutes of screen use for outdoor activities.\n' +
-            'The call to renew a connection with nature comes from a collaboration of almost 400 organisations, from playgroups to the NHS.\n' +
-            'The Wild Network wants children to take up activities like conkers and camping.\n' +
-            '"The tragic truth is that kids have lost touch with nature and the outdoors in just one generation," said chairman Andy Simpson.\n' +
-            'The organisers argue that swapping 30 minutes of television and computer games each day for outdoor play would increase the levels of fitness and alertness and improve children\'s well-being\n' +
-            '"Time spent outdoors is down, roaming ranges have fallen drastically, activity levels are declining and the ability to identify common species has been lost," said Mr Simpson.\n' +
-            'He referred to recent research by the RSPB which suggested only one in five children aged eight to 12 had a connection with nature.\n' +
-            '"We need to make more space for wild time in children\'s daily routine, freeing this generation of kids to have the sort of experiences that many of us took for granted"\n' +
-            '"With many more parents becoming concerned about the dominance of screen time in their children\'s lives, and growing scientific evidence that a decline in active time is bad news for the health and happiness of our children, we all need to become marketing directors for nature," said Mr Simpson.\n' +
-            '"An extra 30 minutes of wild time every day for all under 12-year-olds in the UK would be the equivalent of just three months of their childhood spent outdoors.\n' +
-            '"We want parents to see what this magical wonder product does for their kids\' development, independence and creativity, by giving wild time a go."\n' +
-            'The campaign launches on Friday with the release of a documentary film, Project Wild Thing.\n' +
-            'It tells the story of how, in a bid to get his daughter and son outside, film-maker David Bond appoints himself marketing director for nature, working with branding and outdoor experts to develop a campaign.\n' +
-            '"I wanted to understand why my children\'s childhood is so different from mine, whether this matters and, if it does, what I can do about it," said Mr Bond.\n' +
-            '"The reasons why kids, whether they live in cities or the countryside, have become disconnected from nature and the outdoors are complex.\n' +
-            '"Project Wild Thing isn\'t some misty-eyed nostalgia for the past. We need to make more space for wild time in children\'s daily routine, freeing this generation of kids to have the sort of experiences that many of us took for granted.\n' +
-            '"It\'s all about finding wildness on your doorstep and discovering the sights, sounds and smells of nature, whether in a back garden, local park or green space at the end of the road."\n' +
-            'The campaign, said to be the biggest ever aiming to reconnect children with the outdoors, includes the National Trust, the RSPB, Play England and the NHS, as well as playgroups, businesses and schools.'
-    }
-];
-
-// for(let r of SIMPLE_TEXT){
-//     let o = Object.assign(new Run(),r);
-
-// }
 
 function istext(c) {
     return c !== ' ' && c !== '\n';
@@ -59,33 +17,33 @@ function isspace(c) {
 }
 export class Doc {
     _width: number;
-    height:number;
+    height: number;
     words: Word[];
     lines: Line[];
-    selection: { start:number, end:number };
-    caret_visable:boolean = true;
-    selection_changed:boolean = false;
+    selection: { start: number, end: number };
+    caret_visable: boolean = true;
+    selection_changed: boolean = false;
 
-    static Events = {SELECTION_CHANGE:'selection-change'};
+    static Events = { SELECTION_CHANGE: 'selection-change', TEXT_CHANGE: 'text-change' };
 
     constructor() {
         this.height = 0;
-        this.selection = {start:0,end:0};
+        this.selection = { start: 0, end: 0 };
         this.event_handler = {};
     }
 
-    width(width?:number){
-        if(!width) return this._width;
+    width(width?: number) {
+        if (!width) return this._width;
         this._width = width;
         this.layout();
         return this._width;
     }
 
-    range(start:number,end:number){
-        return new Range(this,start,end);
+    range(start: number, end: number) {
+        return new Range(this, start, end);
     }
 
-    static run2words(runs){
+    static run2words(runs) {
         let words = new Array<Word>();
         let i = 0;
         let j = 0;
@@ -126,7 +84,7 @@ export class Doc {
                     }
                 }
             }
-            words.push(new Word(new Section(text_parts), new Section(space_parts),(text_parts[0] && text_parts[0].run.align) || (space_parts[0] && space_parts[0].run.align)));
+            words.push(new Word(new Section(text_parts), new Section(space_parts), (text_parts[0] && text_parts[0].run.align) || (space_parts[0] && space_parts[0].run.align)));
         }
         return words;
     }
@@ -145,8 +103,8 @@ export class Doc {
         let ordinal = 0;
         let y = 0;
 
-        if(!this.words[this.words.length - 1]._eof){
-            this.words.push(new Word(new Section([new Part(Run.eof,0,1)]),new Section([]),null,true));
+        if (!this.words[this.words.length - 1]._eof) {
+            this.words.push(new Word(new Section([new Part(Run.eof, 0, 1)]), new Section([]), null, true));
         }
 
         function newline(self: Doc) {
@@ -171,44 +129,44 @@ export class Doc {
                 newline(this);
             }
         }
-        
-        if(words.length > 0){
+
+        if (words.length > 0) {
             newline(this);
         }
         const last_line = this.lines[this.lines.length - 1];
-        this.height = !last_line?0:last_line.baseline + last_line.descent;
+        this.height = !last_line ? 0 : last_line.baseline + last_line.descent;
         const _e = performance.now();
         console.log(`layout time : ${_e - _s}`);
     }
 
-    plain_text(){
+    plain_text() {
         let text = '';
-        for(let word of this.words){
+        for (let word of this.words) {
             text += word.plain_text;
         }
         return text;
     }
-    draw(ctx: CanvasRenderingContext2D,bottom?:number) {
+    draw(ctx: CanvasRenderingContext2D, bottom?: number) {
         bottom = bottom || Number.MAX_VALUE;
         for (let line of this.lines) {
-            if(line.baseline - line.ascent > bottom) break;
+            if (line.baseline - line.ascent > bottom) break;
             line.draw(ctx);
         }
     }
 
-    character_by_coordinate(x:number,y:number){
-        let l = 0,r = this.lines.length - 1;
-        while(l < r){
+    character_by_coordinate(x: number, y: number) {
+        let l = 0, r = this.lines.length - 1;
+        while (l < r) {
             let mid = l + r >> 1;
             let t = this.lines[mid].baseline - this.lines[mid].ascent;
-            if(y < t) r = mid;
+            if (y < t) r = mid;
             else l = mid + 1;
         }
         let row;
-        if(this.lines[l].baseline - this.lines[l].ascent > y){
-            if(l >= 1) row = l - 1;
+        if (this.lines[l].baseline - this.lines[l].ascent > y) {
+            if (l >= 1) row = l - 1;
             else row = 0;
-        }else{
+        } else {
             row = this.lines.length - 1;
         }
         let line = this.lines[row];
@@ -216,16 +174,16 @@ export class Doc {
 
         let pwords = line.positionedWords;
         l = 0, r = line.positionedWords.length - 1;
-        while(l < r){
+        while (l < r) {
             let mid = l + r >> 1;
-            if(pwords[mid].left > x) r = mid;
+            if (pwords[mid].left > x) r = mid;
             else l = mid + 1;
         }
-        let word_idx ;
-        if(pwords[l].left > x){
-            if(l >= 1) word_idx = l - 1;
+        let word_idx;
+        if (pwords[l].left > x) {
+            if (l >= 1) word_idx = l - 1;
             else word_idx = 0;
-        }else{
+        } else {
             word_idx = pwords.length - 1;
         }
         // console.log(word_idx)
@@ -235,48 +193,48 @@ export class Doc {
         return ch;
     }
 
-    select(ordinal,ordinalEnd){
+    select(ordinal, ordinalEnd) {
         this.selection.start = ordinal;
         this.selection.end = ordinalEnd;
         this.caret_visable = true;
     }
-    draw_selection(ctx:CanvasRenderingContext2D){
+    draw_selection(ctx: CanvasRenderingContext2D) {
         const start = this.character_by_ordinal(this.selection.start);
         const start_bounds = start.pchar.bounds();
         let line_bounds = start.pchar.pword.line.bounds(false);
-        if(this.selection.start === this.selection.end){
-            if(this.caret_visable){
+        if (this.selection.start === this.selection.end) {
+            if (this.caret_visable) {
                 ctx.beginPath();
-                ctx.moveTo(start_bounds.left,line_bounds.top);
-                ctx.lineTo(start_bounds.left,line_bounds.top + line_bounds.height);
+                ctx.moveTo(start_bounds.left, line_bounds.top);
+                ctx.lineTo(start_bounds.left, line_bounds.top + line_bounds.height);
                 ctx.stroke();
             }
-        }else{
+        } else {
             ctx.save();
             ctx.fillStyle = 'rgba(0, 100, 200, 0.3)';
             const end = this.character_by_ordinal(this.selection.end);
             const end_bounds = end.pchar.bounds();
-            
-            if(start.pchar.pword.line.ordinal === end.pchar.pword.line.ordinal){
-                ctx.fillRect(start_bounds.left,line_bounds.top,end_bounds.left - start_bounds.left,line_bounds.height);
-            }else{
-                ctx.fillRect(start_bounds.left,line_bounds.top,line_bounds.width - start_bounds.left,line_bounds.height);
+
+            if (start.pchar.pword.line.ordinal === end.pchar.pword.line.ordinal) {
+                ctx.fillRect(start_bounds.left, line_bounds.top, end_bounds.left - start_bounds.left, line_bounds.height);
+            } else {
+                ctx.fillRect(start_bounds.left, line_bounds.top, line_bounds.width - start_bounds.left, line_bounds.height);
                 line_bounds = end.pchar.pword.line.bounds(false);
-                ctx.fillRect(line_bounds.left,line_bounds.top,end_bounds.left - line_bounds.left,line_bounds.height);
-                
-                let l = 0,r = this.lines.length - 1;
-                while(l < r){
+                ctx.fillRect(line_bounds.left, line_bounds.top, end_bounds.left - line_bounds.left, line_bounds.height);
+
+                let l = 0, r = this.lines.length - 1;
+                while (l < r) {
                     let mid = l + r >> 1;
-                    if(this.lines[mid].ordinal > start.pchar.ordinal) r = mid;
+                    if (this.lines[mid].ordinal > start.pchar.ordinal) r = mid;
                     else l = mid + 1;
                 }
 
-                if(this.lines[l].ordinal > start.pchar.ordinal){
-                    for(let i = l;;i++){
+                if (this.lines[l].ordinal > start.pchar.ordinal) {
+                    for (let i = l; ; i++) {
                         let line = this.lines[i];
-                        if(line.ordinal + line.length > end.pchar.ordinal) break;
+                        if (line.ordinal + line.length > end.pchar.ordinal) break;
                         line_bounds = line.bounds(false);
-                        ctx.fillRect(line_bounds.left,line_bounds.top,line_bounds.width,line_bounds.height);
+                        ctx.fillRect(line_bounds.left, line_bounds.top, line_bounds.width, line_bounds.height);
                     }
                 }
             }
@@ -284,27 +242,27 @@ export class Doc {
         }
     }
 
-    character_by_ordinal(index:number){
+    character_by_ordinal(index: number) {
 
-        let l = 0,r = this.lines.length - 1;
-        while(l < r){
+        let l = 0, r = this.lines.length - 1;
+        while (l < r) {
             let mid = l + r >> 1;
-            if(this.lines[mid].ordinal + this.lines[mid].length > index) r = mid;
+            if (this.lines[mid].ordinal + this.lines[mid].length > index) r = mid;
             else l = mid + 1;
         }
         let line_no = l;
         let line = this.lines[line_no];
-        l = 0,r = line.positionedWords.length - 1;
-        while(l < r){
+        l = 0, r = line.positionedWords.length - 1;
+        while (l < r) {
             let mid = l + r >> 1;
-            if(line.positionedWords[mid].ordinal + line.positionedWords[mid].length > index) r = mid;
+            if (line.positionedWords[mid].ordinal + line.positionedWords[mid].length > index) r = mid;
             else l = mid + 1;
         }
         let word = line.positionedWords[l];
-        return new Position(this,line_no,l,word.character_by_ordinal(index));
+        return new Position(this, line_no, l, word.character_by_ordinal(index));
     }
 
-    toggle_caret(){
+    toggle_caret() {
         const old = this.caret_visable;
         if (this.selection.start === this.selection.end) {
             // if (this.selectionJustChanged) {
@@ -317,35 +275,39 @@ export class Doc {
         return this.caret_visable !== old;
     }
 
-    length(){
+    length() {
         const line_length = this.lines.length;
         const pw_length = this.lines[line_length - 1].positionedWords.length;
         const last_pw = this.lines[line_length - 1].positionedWords[pw_length - 1];
-        return last_pw.ordinal + last_pw.length; 
+        return last_pw.ordinal + last_pw.length;
     }
 
-    event_handler:{};
+    event_handler: {};
 
-    on(event_name:string,handler){
-        if(!this.event_handler[event_name])
+    on(event_name: string, handler) {
+        if (!this.event_handler[event_name])
             this.event_handler[event_name] = [];
         this.event_handler[event_name].push(handler);
     }
 
-    dispatch_event(event_name:string,...args){
+    dispatch_event(event_name: string, ...args) {
         let handlers = this.event_handler[event_name];
-        if(handlers){
-            for(let handle of handlers){
+        if (handlers) {
+            for (let handle of handlers) {
                 handle(...args);
             }
         }
     }
 
-    selection_range(){
-        return new Range(this,this.selection.start,this.selection.end);
+    fire_text_change(delta) {
+        // dispatch_event(Doc.Events.TEXT_CHANGE,);
     }
 
-    splice(start:number,end:number,text:string | Run | Run[]){
+    selection_range() {
+        return new Range(this, this.selection.start, this.selection.end);
+    }
+
+    splice(start: number, end: number, text: string | Run | Run[]) {
 
         const old_length = this.length();
         let start_pos = this.character_by_ordinal(start);
@@ -355,7 +317,7 @@ export class Doc {
         if (typeof text === 'string') {
             let run = new Run();
             run.text = text;
-            for(let key of FORMATTING_KEYS){
+            for (let key of FORMATTING_KEYS) {
                 run[key] = prev.pchar.part.run[key];
             }
             text = [run];
@@ -365,44 +327,44 @@ export class Doc {
         let start_word_index = this.words.indexOf(start_pword.word);
         // TODO search
 
-        const end_pos = start == end?start_pos:this.character_by_ordinal(end);
-        const end_pchar = start == end?start_pchar:end_pos.pchar;
-        const end_pword = start == end?start_pword:end_pos.pchar.pword;
+        const end_pos = start == end ? start_pos : this.character_by_ordinal(end);
+        const end_pchar = start == end ? start_pchar : end_pos.pchar;
+        const end_pword = start == end ? start_pword : end_pos.pchar.pword;
 
         let end_word_index = this.words.indexOf(end_pword.word);
 
         // const end_word = start == end?start_word:end_char.value.pword;
         // const end_word_index = start == end?start_word_index:this.words.indexOf(end_word.word);
-        const end_word_chars = start == end?start_word_chars:end_pword.characters;
+        const end_word_chars = start == end ? start_word_chars : end_pword.characters;
 
-        let prefix:positionedChar[];
-        if(start_pchar.ordinal === start_pword.ordinal){
+        let prefix: positionedChar[];
+        if (start_pchar.ordinal === start_pword.ordinal) {
             // the first char of the word
-            if(start_word_index > 0){
+            if (start_word_index > 0) {
                 prefix = prev.pchar.pword.characters;
                 start_word_index--;
-            }else{
+            } else {
                 prefix = [];
             }
-        }else{
-            prefix = start_word_chars.slice(0,start_pchar.ordinal - start_pword.ordinal);
+        } else {
+            prefix = start_word_chars.slice(0, start_pchar.ordinal - start_pword.ordinal);
         }
 
-        let suffix:positionedChar[];
+        let suffix: positionedChar[];
 
-        if(end_pchar.ordinal === end_pword.ordinal){
+        if (end_pchar.ordinal === end_pword.ordinal) {
             // exlude the end symbol
-            if(end_pchar.ordinal === this.length() - 1){
+            if (end_pchar.ordinal === this.length() - 1) {
                 // todo
                 // process the end of file symbol
                 suffix = [];
                 end_word_index--;
-            }else{
+            } else {
                 // the last character in the pword
                 suffix = end_pword.characters;
             }
 
-        }else{
+        } else {
             suffix = end_word_chars.slice(end_pchar.ordinal - end_pword.ordinal);
         }
 
@@ -411,42 +373,46 @@ export class Doc {
         const new_run = Run.consolidate(start_runs.concat(text).concat(end_runs));
         const new_words = Doc.run2words(new_run);
 
-        this.words.splice(start_word_index,end_word_index - start_word_index + 1,...new_words);
+        this.words.splice(start_word_index, end_word_index - start_word_index + 1, ...new_words);
         this.layout();
         return this.length() - old_length;
     }
 
+    insert() {
+
+    }
+
 }
 
-export class Position{
-    doc:Doc;
-    line_no:number;
-    pword_no:number;
-    pchar:positionedChar;
-    constructor(doc:Doc,line_no:number,pword_no:number,pchar:positionedChar){
+export class Position {
+    doc: Doc;
+    line_no: number;
+    pword_no: number;
+    pchar: positionedChar;
+    constructor(doc: Doc, line_no: number, pword_no: number, pchar: positionedChar) {
         this.doc = doc;
         this.line_no = line_no;
         this.pword_no = pword_no;
         this.pchar = pchar;
     }
-    equal(o:Position){
+    equal(o: Position) {
         return o.doc === this.doc && o.line_no === this.line_no && o.pword_no === this.pword_no && this.pchar === o.pchar;
     }
 
-    previous(){
+    previous() {
         let index_in_pword = this.pchar.ordinal - this.pchar.pword.ordinal;
 
-        if(index_in_pword > 0){
+        if (index_in_pword > 0) {
             this.pchar = this.pchar.pword.positioned_characters()[index_in_pword - 1];
             return this;
         }
-        if(this.pword_no > 0){
+        if (this.pword_no > 0) {
             this.pword_no--;
             const pword_chars = this.doc.lines[this.line_no].positionedWords[this.pword_no].positioned_characters();
             this.pchar = pword_chars[pword_chars.length - 1];
             return this;
         }
-        if(this.line_no > 0){
+        if (this.line_no > 0) {
             this.line_no--;
             const line = this.doc.lines[this.line_no];
             this.pword_no = line.positionedWords.length - 1;
@@ -457,15 +423,15 @@ export class Position{
         return this;
     }
 
-    previous_pword(){
-        if(this.pword_no > 0){
+    previous_pword() {
+        if (this.pword_no > 0) {
             this.pword_no--;
             const pword_chars = this.doc.lines[this.line_no].positionedWords[this.pword_no].positioned_characters();
             this.pchar = pword_chars[0];
             return this;
         }
 
-        if(this.line_no > 0){
+        if (this.line_no > 0) {
             this.line_no--;
             const line = this.doc.lines[this.line_no];
             this.pword_no = line.positionedWords.length - 1;
@@ -476,22 +442,22 @@ export class Position{
         return this;
     }
 
-    next(){
+    next() {
         let index_in_pword = this.pchar.ordinal - this.pchar.pword.ordinal;
 
-        if(index_in_pword + 1 < this.pchar.pword.positioned_characters().length ){
+        if (index_in_pword + 1 < this.pchar.pword.positioned_characters().length) {
             this.pchar = this.pchar.pword.positioned_characters()[index_in_pword + 1];
             return this;
         }
         let line = this.pchar.pword.line;
-        
-        if(this.pword_no + 1 < line.positionedWords.length){
+
+        if (this.pword_no + 1 < line.positionedWords.length) {
             this.pword_no++;
             this.pchar = line.positionedWords[this.pword_no].positioned_characters()[0];
             return this;
         }
 
-        if(this.line_no + 1 < this.doc.lines.length){
+        if (this.line_no + 1 < this.doc.lines.length) {
             this.line_no++;
             this.pword_no = 0;
             this.pchar = this.doc.lines[this.line_no].positionedWords[0].positioned_characters()[0];
@@ -500,15 +466,15 @@ export class Position{
         return this;
     }
 
-    next_pword(){
+    next_pword() {
         let line = this.pchar.pword.line;
-        if(this.pword_no + 1 < line.positionedWords.length){
+        if (this.pword_no + 1 < line.positionedWords.length) {
             this.pword_no++;
             this.pchar = line.positionedWords[this.pword_no].positioned_characters()[0];
             return this;
         }
 
-        if(this.line_no + 1 < this.doc.lines.length){
+        if (this.line_no + 1 < this.doc.lines.length) {
             this.line_no++;
             this.pword_no = 0;
             this.pchar = this.doc.lines[this.line_no].positionedWords[0].positioned_characters()[0];
