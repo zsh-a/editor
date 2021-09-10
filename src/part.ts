@@ -28,5 +28,11 @@ export class Part{
     draw(ctx:CanvasRenderingContext2D,x:number,y:number){
         apply_run_style(ctx,this.run);
         ctx.fillText(this.is_newline?ENTER:this.text,x,y);
+        if(this.run.underline){
+            ctx.fillRect(x, 1 + y, this.width, 1);
+        }
+        if(this.run.strikeout){
+            ctx.fillRect(x, 1 + y - (this.ascent/2), this.width, 1);
+        }
     }
 }

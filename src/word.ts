@@ -53,5 +53,10 @@ export class Word{
             part.draw(ctx,x,y);
             x += part.width;
         }
+
+        for(let part of this.space.parts){
+            part.draw(ctx,x,y);
+            x += part.width;
+        }
     }
 }

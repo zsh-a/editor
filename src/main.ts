@@ -4,6 +4,7 @@ import './style.css'
 import { positionedChar } from './positionedword';
 import { HUGE_DOCUMENT } from './huge_doc';
 import { TEXT_DEFAULT_STYLE } from './measure';
+import { Run } from './run';
 // const app = document.querySelector<HTMLDivElement>('#app')!
 
 // app.innerHTML = `
@@ -61,32 +62,33 @@ for (let id of format_button) {
 
   elem.addEventListener('change', (e) => {
     let formatting = {};
+    const range = doc.selection_range();
     var val = elem.nodeName === 'INPUT' ? elem.checked : elem.value;
     formatting[id] = val;
     // console.log(formatting)
-    // range.setFormatting(formatting);
-    // exampleEditor.paint();
+    range.set_formating(formatting);
+    paint();
   });
 
-  // doc.on(Doc.Events.SELECTION_CHANGE, (get_formatting) => {
-  //   var formatting = get_formatting();
-  //   var val = id in formatting ? formatting[id] : TEXT_DEFAULT_STYLE[id];
-  //   if (elem.nodeName === 'INPUT') {
-  //     if (val === carota.runs.multipleValues) {
-  //       elem.indeterminate = true;
-  //     } else {
-  //       elem.indeterminate = false;
-  //       elem.checked = val;
-  //     }
-  //   } else {
-  //     elem.value = val;
-  //   }
-  // });
+  doc.on(Doc.Events.SELECTION_CHANGE, () => {
+    var formatting = doc.selection_range().get_formating();
+    var val = id in formatting ? formatting[id] : TEXT_DEFAULT_STYLE[id];
+    if (elem.nodeName === 'INPUT') {
+      if (val === Run.MULTIPLE_VALUES) {
+        elem.indeterminate = true;
+      } else {
+        elem.indeterminate = false;
+        elem.checked = val;
+      }
+    } else {
+      elem.value = val;
+    }
+  });
 }
 
 doc.on(Doc.Events.SELECTION_CHANGE, (start,end) => {
   // console.log(`doc selected ${start},${end}`);
-  doc.range(5,20).save();
+  // doc.range(5,20).save();
 });
 var typing_chinese = false;
 
@@ -209,11 +211,14 @@ let hover_char: positionedChar;
 
 function select(start: number, end: number) {
   doc.select(start, end);
+  doc.dispatch_event(Doc.Events.SELECTION_CHANGE, start,end);
+}
+
+doc.on(Doc.Events.SELECTION_CHANGE,()=>{
   paint();
   if (!select_drag_start)
     update_textarea();
-  doc.dispatch_event(Doc.Events.SELECTION_CHANGE, start,end);
-}
+});
 
 canvas.addEventListener('mousedown', (ev) => {
   const rect = canvas.getBoundingClientRect();

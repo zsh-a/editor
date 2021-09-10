@@ -16,9 +16,17 @@ export class Run{
     
     static eof = new Run('⛔');
 
+    static MULTIPLE_VALUES = {};
+
     constructor(text?:string,bold?:boolean){
         this.text = text;
         this.bold = bold;
+    }
+
+    format(template){
+        for(let key in template){
+            this[key] = template[key];
+        }
     }
 
     static pchar2run(pchar:positionedChar){
@@ -60,5 +68,15 @@ export class Run{
             }
         }
         return res;
+    }
+
+    merge(o:Run){
+        for(let key of FORMATTING_KEYS){
+            if(key in this || key in o){
+                if(this[key] !== o[key]){
+                    this[key] = Run.MULTIPLE_VALUES;
+                }
+            }
+        }
     }
 }

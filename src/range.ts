@@ -27,18 +27,43 @@ export class Range{
         return this.doc.splice(this.start,this.end,text);
     }
     save(){
-        // let pos = this.doc.character_by_ordinal(this.start);
-        // const end_pos = this.doc.character_by_ordinal(this.end);
-        // let res = [];
-        // Run.clone(pos.pchar.pword.word.text.parts)
-        // while(pos.pchar.ordinal < end_pos.pchar.ordinal){
-
-        // }
-        // res.push(run)
-
+        let pos = this.doc.character_by_ordinal(this.start);
+        const end_pos = this.doc.character_by_ordinal(this.end);
+        let res = new Array<Run>();
+        // TODO optimize
+        while(!pos.equal(end_pos)){
+            let run = Run.clone(pos.pchar.part.run);
+            run.text = pos.pchar.char;
+            pos = pos.next();
+            res.push(run);
+        }
+        let runs = Run.consolidate(res);
+        return runs;
     }
-    set_formating(){
+    set_formating(template){
+        const runs = this.save();
+        for(let run of runs){
+            run.format(template);
+        }
+        this.set_text(runs);
+    }
 
+    get_formating(){
+        if(this.start === this.end){
+            let pos = this.start;
+            if(pos > 0) pos--;
+            const ch = this.doc.character_by_ordinal(pos);
+            return ch.pchar.part.run;
+        }else{
+            let pos = this.doc.character_by_ordinal(this.start);
+            const end_pos = this.doc.character_by_ordinal(this.end);
+            let run = Run.clone(pos.pchar.part.run);
+            while(!pos.equal(end_pos)){
+                run.merge(pos.pchar.part.run);
+                pos = pos.next();
+            }
+            return run;
+        }
     }
     clear(){
         return this.doc.splice(this.start,this.end,[]);
