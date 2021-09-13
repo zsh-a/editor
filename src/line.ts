@@ -20,7 +20,7 @@ export class Line {
         this.ascent = ascent;
         this.descent = descent;
         this.ordinal = ordinal;
-        this.align = words[0].align;
+        this.align = words[0] && words[0].align || 'left';
         let x = 0;
         
         let idx = ordinal;

@@ -4,6 +4,10 @@ import { Section, Word } from "./word";
 import { Range } from './range';
 import { positionedChar } from "./positionedword";
 import { FORMATTING_KEYS, Run } from "./run";
+import Delta from 'quill-delta';
+import * as Y from 'yjs'
+import { WebsocketProvider } from "y-websocket";
+import { createMutex } from 'lib0/mutex.js'
 
 const c = <HTMLCanvasElement>document.querySelector("#measure");
 export const canvas_measure = c.getContext("2d");
@@ -20,9 +24,16 @@ export class Doc {
     height: number;
     words: Word[];
     lines: Line[];
+    undo: [];
+    redo: [];
     selection: { start: number, end: number };
     caret_visable: boolean = true;
     selection_changed: boolean = false;
+
+    ydoc: Y.Doc;
+    ytext: Y.Text;
+
+    websocketProvider: WebsocketProvider;
 
     static Events = { SELECTION_CHANGE: 'selection-change', TEXT_CHANGE: 'text-change' };
 
@@ -30,6 +41,48 @@ export class Doc {
         this.height = 0;
         this.selection = { start: 0, end: 0 };
         this.event_handler = {};
+        this.undo = [];
+        this.redo = [];
+        let self = this;
+
+        this.ydoc = new Y.Doc();
+        // Sync clients with the y-websocket provider
+        this.websocketProvider = new WebsocketProvider(
+            'ws://192.168.229.3:1234', 'quill-demo-2', this.ydoc
+        );
+        this.ytext = this.ydoc.getText('quill');
+        this.websocketProvider.on('status', event => {
+            console.log(event.status) // logs "connected" or "disconnected"
+        });
+        this.ytext.observe((event, trans) => {
+            if (trans.local) return;
+            createMutex()(() => {
+                const delta = event.delta;
+                let index = 0;
+                for (let i = 0; i < delta.length; i++) {
+                    const d = delta[i];
+                    if (d.retain) {
+                        index += d.retain;
+                    } else if (d.insert) {
+                        let run = new Run();
+                        run.text = d.insert;
+                        for (let key in d.attributes) {
+                            run[key] = d.attributes[key];
+                        }
+                        index += this.splice(index, index, run, true);
+                    } else {
+                        this.splice(index, index + d.delete, [], true);
+                    }
+                }
+            })
+        });
+
+
+        this.on(Doc.Events.TEXT_CHANGE, (delta: Delta) => {
+            createMutex()(() => {
+                self.ytext.applyDelta(delta.ops);
+            })
+        });
     }
 
     width(width?: number) {
@@ -102,8 +155,11 @@ export class Doc {
         let max_descent = 0;
         let ordinal = 0;
         let y = 0;
+        if (!this.words) {
+            this.words = new Array<Word>();
+        }
 
-        if (!this.words[this.words.length - 1]._eof) {
+        if (this.words.length === 0 || !this.words[this.words.length - 1]._eof) {
             this.words.push(new Word(new Section([new Part(Run.eof, 0, 1)]), new Section([]), null, true));
         }
 
@@ -196,7 +252,9 @@ export class Doc {
     select(ordinal, ordinalEnd) {
         this.selection.start = ordinal;
         this.selection.end = ordinalEnd;
+        if (ordinal === ordinalEnd) this.selection.start = this.selection.end = Math.min(ordinal, this.length() - 1);
         this.caret_visable = true;
+        this.fire_selection_change();
     }
     draw_selection(ctx: CanvasRenderingContext2D) {
         const start = this.character_by_ordinal(this.selection.start);
@@ -299,15 +357,19 @@ export class Doc {
         }
     }
 
-    fire_text_change(delta) {
-        // dispatch_event(Doc.Events.TEXT_CHANGE,);
+    fire_selection_change() {
+        this.dispatch_event(Doc.Events.SELECTION_CHANGE);
+    }
+
+    fire_text_change(delta: Delta) {
+        this.dispatch_event(Doc.Events.TEXT_CHANGE, delta);
     }
 
     selection_range() {
         return new Range(this, this.selection.start, this.selection.end);
     }
 
-    splice(start: number, end: number, text: string | Run | Run[]) {
+    splice(start: number, end: number, text: string | Run | Run[], apply_remote?: boolean) {
 
         const old_length = this.length();
         let start_pos = this.character_by_ordinal(start);
@@ -321,6 +383,22 @@ export class Doc {
                 run[key] = prev.pchar.part.run[key];
             }
             text = [run];
+        } else if (!Array.isArray(text)) {
+            text = [text];
+        }
+
+        if (!apply_remote) {
+            let delta = new Delta();
+            delta.retain(start).delete(end - start);
+            for (let run of text) {
+                let attr = {};
+                for (let key in run) {
+                    if (key !== 'text' && run[key])
+                        attr[key] = run[key];
+                }
+                delta.insert(run.text, attr);
+            }
+            this.fire_text_change(delta);
         }
 
         const start_word_chars = start_pword.characters;
@@ -373,13 +451,38 @@ export class Doc {
         const new_run = Run.consolidate(start_runs.concat(text).concat(end_runs));
         const new_words = Doc.run2words(new_run);
 
-        this.words.splice(start_word_index, end_word_index - start_word_index + 1, ...new_words);
-        this.layout();
+        this.redo.length = 0;
+        this.make_edit_command(this, start_word_index, (end_word_index - start_word_index) + 1, ...new_words)();
+
         return this.length() - old_length;
     }
 
-    insert() {
+    make_edit_command(self: Doc, start: number, count: number, ...words) {
+        const sel_start = this.selection.start, sel_end = this.selection.end;
+        return function (redo?) {
+            const old_words = self.words.splice(start, count, ...words);
+            // let delta = new Delta();
 
+            let stk = self[redo ? 'redo' : 'undo'];
+            while (stk.length > 50) {
+                stk.shift();
+            }
+            stk.push(self.make_edit_command(self, start, words.length, ...old_words));
+            self.layout();
+            self.select(sel_start, sel_end);
+        };
+    }
+
+    insert(text) {
+        const len = this.selection_range().set_text(text);
+        this.select(this.selection.end + len, this.selection.end + len);
+    }
+
+    perform_undo(redo?) {
+        var op = (redo ? this.redo : this.undo).pop();
+        if (op) {
+            op(!redo);
+        }
     }
 
 }

@@ -1,4 +1,5 @@
 import { Doc } from "./doc";
+import { handel_event } from "./dom";
 import { TEXT_DEFAULT_STYLE } from "./measure";
 import { positionedChar } from "./positionedword";
 import { Run } from "./run";
@@ -84,8 +85,7 @@ export class Editor {
             // doc.range(5,20).save();
         });
         var typing_chinese = false;
-
-        this.text_area.addEventListener('input', () => {
+        handel_event(this.text_area,'input', () => {
             if (typing_chinese) return;
             const s = performance.now();
             const newText = this.text_area.value;
@@ -94,8 +94,7 @@ export class Editor {
                 this.text_area_content = '';
 
                 //if (carotaDocument.selectedRange().plainText() != newText)
-                this.doc.selection.end += this.doc.selection_range().set_text(newText);
-                this.doc.selection.start = this.doc.selection.end;
+                this.doc.insert(newText);
 
                 this.text_area.value = '';
                 this.paint();
@@ -111,11 +110,11 @@ export class Editor {
             console.log(`insert time : ${elapsedTime}`);
         });
 
-        this.text_area.addEventListener('compositionstart', () => {
+        handel_event(this.text_area,'compositionstart', () => {
             typing_chinese = true;
         });
 
-        this.text_area.addEventListener('compositionend', () => {
+        handel_event(this.text_area,'compositionend', () => {
             // console.log(`compositionend : ${text_area.val()}`);
             const newText = this.text_area.value;
             if (this.text_area_content != newText) {
@@ -179,16 +178,15 @@ export class Editor {
             this.text_area.focus();
         });
 
-        this.text_area.addEventListener('keydown', (ev) => {
+        handel_event(this.text_area,'keydown', (ev) => {
             // console.log(ev.key,typeof ev.key)
-
             const s = performance.now();
 
 
             let start = this.doc.selection.start;
             let end = this.doc.selection.end;
             let selecting = ev.shiftKey;
-            let handled = false;
+            let handled = false; // whether event is handled
             const doc_length = this.doc.length();
             if (!selecting) {
                 this.keyboardSelect = 0;
@@ -206,15 +204,15 @@ export class Editor {
             }
             let ordinal = this.keyboardSelect === 1 ? end : start;
 
-            function change_line(direction: number) {
-                const pos = this.doc.character_by_ordinal(ordinal);
+            function change_line(self:Editor,direction: number) {
+                const pos = self.doc.character_by_ordinal(ordinal);
                 const ch_bounds = pos.pchar.bounds();
-                if (this.keyboardX === null) {
-                    this.keyboardX = ch_bounds.left + ch_bounds.width / 2;
+                if (self.keyboardX === null) {
+                    self.keyboardX = ch_bounds.left + ch_bounds.width / 2;
                 }
                 let y = (direction > 0) ? ch_bounds.top + ch_bounds.height : ch_bounds.top;
                 y += direction;
-                const new_ch = this.doc.character_by_coordinate(this.keyboardX, y);
+                const new_ch = self.doc.character_by_coordinate(self.keyboardX, y);
                 ordinal = new_ch.ordinal;
             }
             let changing_caret = false;
@@ -259,11 +257,11 @@ export class Editor {
                     changing_caret = true;
                     break;
                 case "ArrowUp":
-                    change_line(-1);
+                    change_line(this,-1);
                     changing_caret = true;
                     break;
                 case "ArrowDown":
-                    change_line(1);
+                    change_line(this,1);
                     changing_caret = true;
                     break;
                 case "Backspace":
@@ -279,6 +277,18 @@ export class Editor {
                         this.doc.range(start, start + 1).clear();
                         this.select(this.focus_char, this.focus_char);
                         handled = true;
+                    }
+                    break;
+                case 'z':
+                    if (ev.ctrlKey) {
+                        handled = true;
+                        this.doc.perform_undo();
+                    }
+                    break;
+                case 'y':
+                    if (ev.ctrlKey) {
+                        handled = true;
+                        this.doc.perform_undo(true);
                     }
                     break;
             }
@@ -320,10 +330,13 @@ export class Editor {
                 this.select(start, end);
             }
 
+            
             const e = performance.now();
             const elapsedTime = e - s;
             console.log(`paint time : ${elapsedTime}`);
-            console.log(ev.key);
+            // console.log(ev.key);
+            if(handled) return false;
+            return true;
         });
 
         let self = this;
@@ -332,7 +345,7 @@ export class Editor {
                 self.paint();
         }, 500);
 
-        this.doc.load(SIMPLE_TEXT);
+        // this.doc.load(SIMPLE_TEXT);
         this.update();
     }
 
