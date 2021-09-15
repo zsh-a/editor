@@ -202,9 +202,11 @@ export class Doc {
         }
         return text;
     }
-    draw(ctx: CanvasRenderingContext2D, bottom?: number) {
+    draw(ctx: CanvasRenderingContext2D,top?:number, bottom?: number) {
+        top = top || 0;
         bottom = bottom || Number.MAX_VALUE;
         for (let line of this.lines) {
+            if(line.baseline + line.descent < top) continue;
             if (line.baseline - line.ascent > bottom) break;
             line.draw(ctx);
         }
@@ -250,8 +252,8 @@ export class Doc {
     }
 
     select(ordinal, ordinalEnd) {
-        this.selection.start = ordinal;
-        this.selection.end = ordinalEnd;
+        this.selection.start = ordinal<0?0:ordinal;
+        this.selection.end = ordinalEnd >= this.length()?this.length()- 1:ordinalEnd;
         if (ordinal === ordinalEnd) this.selection.start = this.selection.end = Math.min(ordinal, this.length() - 1);
         this.caret_visable = true;
         this.fire_selection_change();

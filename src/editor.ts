@@ -1,5 +1,5 @@
 import { Doc } from "./doc";
-import { handel_event } from "./dom";
+import { handel_event, handle_mouse_event } from "./dom";
 import { TEXT_DEFAULT_STYLE } from "./measure";
 import { positionedChar } from "./positionedword";
 import { Run } from "./run";
@@ -8,6 +8,7 @@ import { SIMPLE_TEXT } from "./simple_text";
 export class Editor {
     doc: Doc;
     canvas: HTMLCanvasElement;
+    spacer;
     editor_div;
     textArea_div;
     text_area;
@@ -29,15 +30,19 @@ export class Editor {
 
     constructor() {
         this.editor_div = document.querySelector('#editor-div');
-        this.editor_div.innerHTML = '<canvas  width="100" height="100" class="editro-canvas"></canvas>' +
-            '<div style="overflow: hidden; position: absolute; height: 0;">' +
+        this.editor_div.innerHTML = 
+            '<div class="spacer">' +
+                '<canvas width="100" height="100" class="editor-canvas" style="position: absolute;"></canvas>' +
+            '</div>' +
+        '<div class="TextArea" style="overflow: hidden; position: absolute; height: 0;">' +
             '<textarea autocorrect="off" autocapitalize="off" spellcheck="false" tabindex="0" ' +
             'style="position: absolute; padding: 0px; width: 1000px; height: 1em; ' +
             'outline: none; font-size: 4px;"></textarea>'
         '</div>';
-        this.canvas = <HTMLCanvasElement>this.editor_div.querySelector('.editro-canvas');
-        this.textArea_div = this.editor_div.querySelector('div');
-        this.text_area = this.editor_div.querySelector('textarea');
+        this.canvas = <HTMLCanvasElement>this.editor_div.querySelector('.editor-canvas');
+        this.spacer = this.editor_div.querySelector('.spacer');
+        this.textArea_div = this.editor_div.querySelector('.TextArea');
+        this.text_area = this.textArea_div.querySelector('textarea');
 
         this.select_drag_start = null;
         this.keyboardSelect = 0;
@@ -80,10 +85,6 @@ export class Editor {
             });
         }
 
-        this.doc.on(Doc.Events.SELECTION_CHANGE, (start, end) => {
-            // console.log(`doc selected ${start},${end}`);
-            // doc.range(5,20).save();
-        });
         var typing_chinese = false;
         handel_event(this.text_area,'input', () => {
             if (typing_chinese) return;
@@ -136,27 +137,24 @@ export class Editor {
             typing_chinese = false;
         });
 
+        handel_event(this.editor_div, 'scroll', ()=>{
+            this.paint();
+        });
+
         this.doc.on(Doc.Events.SELECTION_CHANGE, () => {
             this.paint();
             if (!this.select_drag_start)
                 this.update_textarea();
         });
 
-        this.canvas.addEventListener('mousedown', (ev) => {
-            const rect = this.canvas.getBoundingClientRect();
-            const x = ev.pageX - rect.left;
-            const y = ev.pageY - rect.top;
-
+        handle_mouse_event(this.spacer,'mousedown',(ev,x,y)=>{
             const ch = this.doc.character_by_coordinate(x, y);
             this.select_drag_start = ch.ordinal;
             this.focus_char = ch.ordinal;
             this.select(ch.ordinal, ch.ordinal);
         });
 
-        this.canvas.addEventListener('mousemove', (ev) => {
-            const rect = this.canvas.getBoundingClientRect();
-            const x = ev.pageX - rect.left;
-            const y = ev.pageY - rect.top;
+        handle_mouse_event(this.spacer,'mousemove',(ev,x,y)=>{
             if (this.select_drag_start !== null) {
                 const new_hover_char = this.doc.character_by_coordinate(x, y);
                 this.hover_char = new_hover_char;
@@ -171,12 +169,12 @@ export class Editor {
             }
         });
 
-        this.canvas.addEventListener('mouseup', () => {
+        handle_mouse_event(this.spacer,'mouseup',(ev,x,y)=>{
             this.select_drag_start = null;
             this.keyboardX = null;
             this.update_textarea();
             this.text_area.focus();
-        });
+        })
 
         handel_event(this.text_area,'keydown', (ev) => {
             // console.log(ev.key,typeof ev.key)
@@ -291,18 +289,24 @@ export class Editor {
                         this.doc.perform_undo(true);
                     }
                     break;
+                case 'a': // A select all
+                    if (ev.ctrlKey) {
+                        handled = true;
+                        this.doc.select(0,this.doc.length() - 1);
+                    }
+                    break;
             }
 
 
-            if (ev.ctrlKey) {
-                // var selRange = doc.selectedRange();
-                // var format = {};
-                // format[toggle] = selRange.getFormatting()[toggle] !== true;
-                // selRange.setFormatting(format);
-                this.doc.width();
-                this.paint();
-                handled = true;
-            }
+            // if (ev.ctrlKey) {
+            //     // var selRange = doc.selectedRange();
+            //     // var format = {};
+            //     // format[toggle] = selRange.getFormatting()[toggle] !== true;
+            //     // selRange.setFormatting(format);
+            //     this.doc.width();
+            //     this.paint();
+            //     handled = true;
+            // }
             if (changing_caret) {
                 switch (this.keyboardSelect) {
                     case 0:
@@ -357,7 +361,11 @@ export class Editor {
         }
 
         this.canvas.width = this.editor_div.clientWidth;
-        this.canvas.height = Math.max(this.doc.height, this.editor_div.clientHeight);
+        this.canvas.height = this.editor_div.clientHeight;
+        this.canvas.style.top = this.editor_div.scrollTop + 'px';
+        this.spacer.style.width = this.canvas.width + 'px';
+        this.spacer.style.height = Math.max(this.doc.height, this.editor_div.clientHeight) + 'px';
+
         if (this.doc.height < this.editor_div.clientHeight) {
             this.editor_div.style.overflow = 'hidden';
         } else {
@@ -368,8 +376,9 @@ export class Editor {
         }
 
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.translate(0, -this.editor_div.scrollTop);
 
-        this.doc.draw(this.ctx);
+        this.doc.draw(this.ctx,this.editor_div.scrollTop, this.editor_div.scrollTop + this.canvas.height);
 
         if (this.select_drag_start || (this.editor_div.activeElement === this.text_area)) {
         }
@@ -399,7 +408,6 @@ export class Editor {
     }
     select(start: number, end: number) {
         this.doc.select(start, end);
-        this.doc.dispatch_event(Doc.Events.SELECTION_CHANGE);
     }
 
     update() {
