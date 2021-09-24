@@ -8,6 +8,7 @@ import Delta from 'quill-delta';
 import * as Y from 'yjs'
 import { WebsocketProvider } from "y-websocket";
 import { createMutex } from 'lib0/mutex.js'
+import { CHINESE_HUGE_TEXT } from "./chinese_doc";
 
 const c = <HTMLCanvasElement>document.querySelector("#measure");
 export const canvas_measure = c.getContext("2d");
@@ -19,6 +20,21 @@ function istext(c) {
 function isspace(c) {
     return c === ' ';
 }
+
+const CHINESE_PATTERN = new RegExp("[\u4E00-\u9FA5]+");
+const ALPHA_PATTERN = new RegExp("[A-Za-z]+");
+const CHINESE_PUNCTUATION_PATTERN = /[\u3002|\uff1f|\uff01|\uff0c|\u3001|\uff1b|\uff1a|\u201c|\u201d|\u2018|\u2019|\uff08|\uff09|\u300a|\u300b|\u3008|\u3009|\u3010|\u3011|\u300e|\u300f|\u300c|\u300d|\ufe43|\ufe44|\u3014|\u3015|\u2026|\u2014|\uff5e|\ufe4f|\uffe5]/;
+function ischinese(c){
+    return CHINESE_PATTERN.test(c);
+}
+function isalpha(c){
+    return ALPHA_PATTERN.test(c);
+}
+
+function ispunctuation(c){
+    return CHINESE_PUNCTUATION_PATTERN.test(c);
+}
+
 export class Doc {
     _width: number;
     height: number;
@@ -48,7 +64,7 @@ export class Doc {
         this.ydoc = new Y.Doc();
         // Sync clients with the y-websocket provider
         this.websocketProvider = new WebsocketProvider(
-            'ws://192.168.229.3:1234', 'quill-demo-2', this.ydoc
+            'ws://172.29.103.244:1234', 'quill-demo-2', this.ydoc
         );
         this.ytext = this.ydoc.getText('quill');
         this.websocketProvider.on('status', event => {
@@ -111,24 +127,33 @@ export class Doc {
                     j = 0;
                 }
             } else {
+                let flag = false;
                 while (i < runs.length) {
                     let run = runs[i];
                     if (!istext(run.text[j])) break;
                     let s = j;
-                    while (j < run.text.length && istext(run.text[j])) j++;
+                    
+                    if(j < run.text.length && ischinese(run.text[j])){
+                        ++j;
+                        flag = true;
+                    }else{
+                        while (j < run.text.length && (istext(run.text[j]) && !ischinese(run.text[j]))) j++;
+                    }
                     if (j - s == 0) break;
                     text_parts.push(new Part(run, s, j));
                     if (j == run.text.length) {
                         ++i;
                         j = 0;
                     }
+                    if(flag) break;
                 }
 
                 while (i < runs.length) {
                     let run = runs[i];
-                    if (!isspace(run.text[j])) break;
+
+                    if (!ispunctuation(run.text[j]) && !isspace(run.text[j])) break;
                     let s = j;
-                    while (j < run.text.length && isspace(run.text[j])) j++;
+                    while (j < run.text.length && (isspace(run.text[j]) || ispunctuation(run.text[j]))) j++;
                     if (j - s == 0) break;
                     space_parts.push(new Part(run, s, j));
                     if (j == run.text.length) {
@@ -247,7 +272,8 @@ export class Doc {
         // console.log(word_idx)
 
         let word = pwords[word_idx];
-        let ch = word.character_by_coordinate(x);
+        let next_pword = pwords[word_idx + 1];
+        let ch = word.character_by_coordinate(x,next_pword);
         return ch;
     }
 
@@ -372,7 +398,7 @@ export class Doc {
     }
 
     splice(start: number, end: number, text: string | Run | Run[], apply_remote?: boolean) {
-
+        const _s = performance.now();
         const old_length = this.length();
         let start_pos = this.character_by_ordinal(start);
         const start_pchar = start_pos.pchar;
@@ -455,7 +481,8 @@ export class Doc {
 
         this.redo.length = 0;
         this.make_edit_command(this, start_word_index, (end_word_index - start_word_index) + 1, ...new_words)();
-
+        const _e = performance.now();
+        console.log(`splice time : ${_e - _s}`);
         return this.length() - old_length;
     }
 

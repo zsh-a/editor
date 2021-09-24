@@ -37,7 +37,7 @@ export class positionedChar {
         // this.part
         const wb = this.pword.bounds();
         const width = this.pword.word.is_newline() ? newLineWidth(this.part.run) : this.part.width;
-        return new Rect(wb.left + this.left, wb.top, width, wb.height);
+        return new Rect(this.left, wb.top, width, wb.height);
     }
 }
 
@@ -73,7 +73,7 @@ export class PositionedWord {
     realiseCharacters() {
         if (!this.characters) {
             this.characters = new Array<positionedChar>();
-            var x = 0, ordinal = this.ordinal;
+            var x = this.left, ordinal = this.ordinal;
             let word_part = this.word.text;
             for (let p of word_part.parts) {
 
@@ -102,9 +102,9 @@ export class PositionedWord {
         return this.characters;
     }
 
-    character_by_coordinate(x: number) {
+    character_by_coordinate(x: number,next_pword:PositionedWord) {
         this.realiseCharacters();
-        x -= this.left;
+        // x -= this.left;
         let l = 0, r = this.characters.length - 1;
         while (l < r) {
             let mid = l + r >> 1;
@@ -112,14 +112,21 @@ export class PositionedWord {
             else l = mid + 1;
         }
         
-        if(l <= 0){
-            return this.characters[l];
-        }
+        let prev_ch;
+        if(l <= 0 && !next_pword) return this.characters[l];
 
         let ch = this.characters[l];
-        let ch_mid = (this.characters[l - 1].left + ch.left) / 2;
+        // if chinese, the pos may be between the current pword and next_pword 
+        if(ch.left < x){
+            prev_ch = ch;
+            ch = next_pword.positioned_characters()[0];
+        }else{
+            prev_ch = this.characters[l - 1];
+        }
+        if(!prev_ch) return ch;
+        let ch_mid = (prev_ch.left + ch.left) / 2;
         if (x >= ch_mid) return ch;
-        return this.characters[l - 1];
+        return prev_ch;
     }
 
     character_by_ordinal(index: number) {

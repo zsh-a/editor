@@ -1,5 +1,7 @@
+import { CHINESE_HUGE_TEXT } from "./chinese_doc";
 import { Doc } from "./doc";
 import { handel_event, handle_mouse_event } from "./dom";
+import { HUGE_DOCUMENT } from "./huge_doc";
 import { TEXT_DEFAULT_STYLE } from "./measure";
 import { positionedChar } from "./positionedword";
 import { Run } from "./run";
@@ -337,7 +339,7 @@ export class Editor {
             
             const e = performance.now();
             const elapsedTime = e - s;
-            console.log(`paint time : ${elapsedTime}`);
+            // console.log(`paint time : ${elapsedTime}`);
             // console.log(ev.key);
             if(handled) return false;
             return true;
@@ -349,12 +351,13 @@ export class Editor {
                 self.paint();
         }, 500);
 
-        // this.doc.load(SIMPLE_TEXT);
+        // this.doc.load(CHINESE_HUGE_TEXT);
+        // console.log(this.doc.words)
         this.update();
     }
 
     paint() {
-        // const start = performance.now();
+        const _s = performance.now();
 
         if (this.doc.width() !== this.editor_div.clientWidth) {
             this.doc.width(this.editor_div.clientWidth);
@@ -385,9 +388,9 @@ export class Editor {
         this.doc.draw_selection(this.ctx);
 
         // doc.draw_selection(ctx);
-        // const end = performance.now();
+        const _e = performance.now();
         // const elapsedTime = end - start;
-        // console.log(`paint time : ${elapsedTime}`);
+        // console.log(`paint time : ${_e - _s}`);
     }
 
     update_textarea() {
