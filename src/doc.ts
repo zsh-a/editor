@@ -64,7 +64,7 @@ export class Doc {
         this.ydoc = new Y.Doc();
         // Sync clients with the y-websocket provider
         this.websocketProvider = new WebsocketProvider(
-            'ws://172.29.103.244:1234', 'quill-demo-2', this.ydoc
+            'ws://0.0.0.0:1234', 'quill-demo-2', this.ydoc
         );
         this.ytext = this.ydoc.getText('quill');
         this.websocketProvider.on('status', event => {
@@ -119,6 +119,13 @@ export class Doc {
         while (i < runs.length) {
             let text_parts = [];
             let space_parts = [];
+
+            if(runs[i].text.length === 0){
+                i++;
+                j = 0;
+                continue;
+            }
+            
             if (runs[i].text[j] === '\n') {
                 text_parts.push(new Part(runs[i], j, j + 1));
                 ++j;
