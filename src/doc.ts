@@ -9,6 +9,7 @@ import * as Y from 'yjs'
 import { WebsocketProvider } from "y-websocket";
 import { createMutex } from 'lib0/mutex.js'
 import { CHINESE_HUGE_TEXT } from "./chinese_doc";
+import { Awareness } from "y-protocols/awareness";
 
 const c = <HTMLCanvasElement>document.querySelector("#measure");
 export const canvas_measure = c.getContext("2d");
@@ -24,15 +25,27 @@ function isspace(c) {
 const CHINESE_PATTERN = new RegExp("[\u4E00-\u9FA5]+");
 const ALPHA_PATTERN = new RegExp("[A-Za-z]+");
 const CHINESE_PUNCTUATION_PATTERN = /[\u3002|\uff1f|\uff01|\uff0c|\u3001|\uff1b|\uff1a|\u201c|\u201d|\u2018|\u2019|\uff08|\uff09|\u300a|\u300b|\u3008|\u3009|\u3010|\u3011|\u300e|\u300f|\u300c|\u300d|\ufe43|\ufe44|\u3014|\u3015|\u2026|\u2014|\uff5e|\ufe4f|\uffe5]/;
-function ischinese(c){
+function ischinese(c) {
     return CHINESE_PATTERN.test(c);
 }
-function isalpha(c){
+function isalpha(c) {
     return ALPHA_PATTERN.test(c);
 }
 
-function ispunctuation(c){
+function ispunctuation(c) {
     return CHINESE_PUNCTUATION_PATTERN.test(c);
+}
+
+
+class Cursor {
+    name: string;
+    color: string;
+    index: number;
+    length: number;
+    constructor() {
+        this.index = 0;
+        this.length = 0;
+    }
 }
 
 export class Doc {
@@ -48,8 +61,12 @@ export class Doc {
 
     ydoc: Y.Doc;
     ytext: Y.Text;
-
+    awareness: Awareness;
     websocketProvider: WebsocketProvider;
+
+    cursors: Map<string, Cursor>;
+
+    cursors_div: HTMLDivElement;
 
     static Events = { SELECTION_CHANGE: 'selection-change', TEXT_CHANGE: 'text-change' };
 
@@ -61,11 +78,15 @@ export class Doc {
         this.redo = [];
         let self = this;
 
+        this.cursors_div = <HTMLDivElement>document.querySelector('#cursors');
+
         this.ydoc = new Y.Doc();
         // Sync clients with the y-websocket provider
         this.websocketProvider = new WebsocketProvider(
             'ws://0.0.0.0:1234', 'quill-demo-2', this.ydoc
         );
+        this.awareness = this.websocketProvider.awareness;
+        this.cursors = new Map();
         this.ytext = this.ydoc.getText('quill');
         this.websocketProvider.on('status', event => {
             console.log(event.status) // logs "connected" or "disconnected"
@@ -93,12 +114,188 @@ export class Doc {
             })
         });
 
-
         this.on(Doc.Events.TEXT_CHANGE, (delta: Delta) => {
             createMutex()(() => {
                 self.ytext.applyDelta(delta.ops);
             })
+
+            if (this.awareness) {
+                const aw = this.awareness.getLocalState();
+                const sel = this.selection_range();
+
+                if (sel === null) {
+                  if (this.awareness.getLocalState() !== null) {
+                    this.awareness.setLocalStateField('cursor', (null));
+                  }
+                }else{
+                    const anchor = Y.createRelativePositionFromTypeIndex(this.ytext, this.selection.start);
+                    const head = Y.createRelativePositionFromTypeIndex(this.ytext, this.selection.end);
+                    if (!aw || !aw.cursor || !Y.compareRelativePositions(anchor, aw.cursor.anchor) || !Y.compareRelativePositions(head, aw.cursor.head)) {
+                        this.awareness.setLocalStateField('cursor', {
+                            anchor,
+                            head
+                        });
+                    }
+                }
+                
+                this.awareness.getStates().forEach((aw, client_id) => {
+                    this.update_cursor(aw, client_id, this.ydoc, this.ytext);
+                });
+            }
         });
+
+        this.on(Doc.Events.SELECTION_CHANGE, () => {
+            if (this.awareness) {
+                const aw = this.awareness.getLocalState();
+                const sel = this.selection_range();
+
+                if (sel === null) {
+                  if (this.awareness.getLocalState() !== null) {
+                    this.awareness.setLocalStateField('cursor', (null));
+                  }
+                }else{
+                    const anchor = Y.createRelativePositionFromTypeIndex(this.ytext, this.selection.start);
+                    const head = Y.createRelativePositionFromTypeIndex(this.ytext, this.selection.end);
+                    if (!aw || !aw.cursor || !Y.compareRelativePositions(anchor, aw.cursor.anchor) || !Y.compareRelativePositions(head, aw.cursor.head)) {
+                        this.awareness.setLocalStateField('cursor', {
+                            anchor,
+                            head
+                        });
+                    }
+                }
+                
+                this.awareness.getStates().forEach((aw, client_id) => {
+                    this.update_cursor(aw, client_id, this.ydoc, this.ytext);
+                });
+            }
+        });
+
+        this.awareness.on('change', ({ added, removed, updated }) => {
+            const states = self.awareness.getStates()
+            added.forEach(id => {
+                self.update_cursor(states.get(id), id, self.ydoc, self.ytext);
+            })
+            updated.forEach(id => {
+                self.update_cursor(states.get(id), id, self.ydoc, self.ytext);
+            })
+            removed.forEach(id => {
+                self.remove_cursor(id.toString());
+            })
+        });
+    }
+
+    update_cursor(aw, clientId, doc, type) {
+        try {
+            if (aw && aw.cursor && clientId !== doc.clientID) {
+                const user = aw.user || {}
+                const color = user.color || '#ffa500'
+                const name = user.name || `User: ${clientId}`
+                this.create_cursor(clientId.toString(), name, color)
+                const anchor = Y.createAbsolutePositionFromRelativePosition(Y.createRelativePositionFromJSON(aw.cursor.anchor), doc)
+                const head = Y.createAbsolutePositionFromRelativePosition(Y.createRelativePositionFromJSON(aw.cursor.head), doc)
+                if (anchor && head && anchor.type === type) {
+                    this.move_cursor(clientId.toString(), { index: anchor.index, length: head.index - anchor.index })
+                }
+            } else {
+                this.remove_cursor(clientId.toString())
+            }
+        } catch (err) {
+            console.error(err)
+        }
+        var rect = document.querySelector('.spacer').getBoundingClientRect();
+        this.draw_cursor(rect);
+    }
+
+
+    create_cursor(client_id: string, name: string, color: string) {
+        if (this.cursors.has(client_id)) return;
+        let c = new Cursor();
+        c.name = name;
+        c.color = color;
+        this.cursors.set(client_id, c);
+    }
+
+    remove_cursor(client_id: string) {
+        this.cursors.delete(client_id);
+    }
+
+    move_cursor(client_id: string, value) {
+        const v = this.cursors.get(client_id);
+        v.index = value.index;
+        v.length = value.length;
+    }
+
+    draw_cursor(rect) {
+        const left = rect.left, top = rect.top;
+        let cursor_html = '';
+        this.cursors.forEach((cursor, client_id) => {
+            // this.draw_selection(ctx,cursor.index,cursor.index + cursor.length);
+            const s = cursor.index, e = cursor.index + cursor.length;
+
+            const start = this.character_by_ordinal(s);
+            const start_bounds = start.pchar.bounds();
+            let line_bounds = start.pchar.pword.line.bounds(false);
+            let html = `<span class="ql-cursor" id="ql-cursor-${client_id}">`;
+
+            html += '<span class="ql-cursor-selections">';
+
+            if(s !== e){
+                const end = this.character_by_ordinal(e);
+                const end_bounds = end.pchar.bounds();
+
+                if (start.pchar.pword.line.ordinal === end.pchar.pword.line.ordinal) {
+                    html += `<span class="ql-cursor-selection-block" style="top: ${line_bounds.top + top}px; left: ${start_bounds.left + left}px; width: ${end_bounds.left - start_bounds.left}px; height: ${line_bounds.height}px; background-color: rgba(255, 165, 0, 0.3);"></span>`;
+                } else {
+                    html += `<span class="ql-cursor-selection-block" style="top: ${line_bounds.top + top}px; left: ${start_bounds.left + left}px; width: ${line_bounds.width - start_bounds.left}px; height: ${line_bounds.height}px; background-color: rgba(255, 165, 0, 0.3);"></span>`;
+                    line_bounds = end.pchar.pword.line.bounds(false);
+                    html += `<span class="ql-cursor-selection-block" style="top: ${line_bounds.top + top}px; left: ${line_bounds.left + left}px; width: ${end_bounds.left - line_bounds.left}px; height: ${line_bounds.height}px; background-color: rgba(255, 165, 0, 0.3);"></span>`;
+
+                    let l = 0, r = this.lines.length - 1;
+                    while (l < r) {
+                        let mid = l + r >> 1;
+                        if (this.lines[mid].ordinal > start.pchar.ordinal) r = mid;
+                        else l = mid + 1;
+                    }
+
+                    if (this.lines[l].ordinal > start.pchar.ordinal) {
+                        for (let i = l; ; i++) {
+                            let line = this.lines[i];
+                            if (line.ordinal + line.length > end.pchar.ordinal) break;
+                            line_bounds = line.bounds(false);
+                            html += `<span class="ql-cursor-selection-block" style="top: ${line_bounds.top + top}px; left: ${line_bounds.left + left}px; width: ${line_bounds.width}px; height: ${line_bounds.height}px; background-color: rgba(255, 165, 0, 0.3);"></span>`;
+                        }
+                    }
+                }
+            }
+            html += '</span>';
+            if(s === e){
+                html += `<span class="ql-cursor-caret-container" style="top: ${start_bounds.top + top}px; left: ${start_bounds.left + left}px; height: ${line_bounds.height}px;">\
+                            <span class="ql-cursor-caret" style="background-color: rgb(255, 165, 0);"></span>\
+                        </span>\
+                        <div class="ql-cursor-flag"\
+                            style="background-color: rgb(255, 165, 0); transition-delay: 3000ms; transition-duration: 400ms; top: ${start_bounds.top + top}px; left: ${start_bounds.left + left}px;">\
+                            <small class="ql-cursor-name">User: ${client_id}</small>\
+                            <span class="ql-cursor-flag-flap"></span>\
+                        </div>\
+                    </span>`;
+            }else{
+
+                const end = this.character_by_ordinal(e);
+                const end_bounds = end.pchar.bounds();
+                html += `<span class="ql-cursor-caret-container" style="top: ${end_bounds.top + top}px; left: ${end_bounds.left + left}px; height: ${line_bounds.height}px;">\
+                            <span class="ql-cursor-caret" style="background-color: rgb(255, 165, 0);"></span>\
+                        </span>\
+                        <div class="ql-cursor-flag"\
+                            style="background-color: rgb(255, 165, 0); transition-delay: 3000ms; transition-duration: 400ms; top: ${end_bounds.top + top}px; left: ${end_bounds.left + left}px;">\
+                            <small class="ql-cursor-name">User: ${client_id}</small>\
+                            <span class="ql-cursor-flag-flap"></span>\
+                        </div>\
+                    </span>`;
+
+            }
+            cursor_html += html;
+        });
+        this.cursors_div.innerHTML = cursor_html;
     }
 
     width(width?: number) {
@@ -120,12 +317,12 @@ export class Doc {
             let text_parts = [];
             let space_parts = [];
 
-            if(runs[i].text.length === 0){
+            if (runs[i].text.length === 0) {
                 i++;
                 j = 0;
                 continue;
             }
-            
+
             if (runs[i].text[j] === '\n') {
                 text_parts.push(new Part(runs[i], j, j + 1));
                 ++j;
@@ -139,11 +336,11 @@ export class Doc {
                     let run = runs[i];
                     if (!istext(run.text[j])) break;
                     let s = j;
-                    
-                    if(j < run.text.length && ischinese(run.text[j])){
+
+                    if (j < run.text.length && ischinese(run.text[j])) {
                         ++j;
                         flag = true;
-                    }else{
+                    } else {
                         while (j < run.text.length && (istext(run.text[j]) && !ischinese(run.text[j]))) j++;
                     }
                     if (j - s == 0) break;
@@ -152,7 +349,7 @@ export class Doc {
                         ++i;
                         j = 0;
                     }
-                    if(flag) break;
+                    if (flag) break;
                 }
 
                 while (i < runs.length) {
@@ -234,11 +431,11 @@ export class Doc {
         }
         return text;
     }
-    draw(ctx: CanvasRenderingContext2D,top?:number, bottom?: number) {
+    draw(ctx: CanvasRenderingContext2D, top?: number, bottom?: number) {
         top = top || 0;
         bottom = bottom || Number.MAX_VALUE;
         for (let line of this.lines) {
-            if(line.baseline + line.descent < top) continue;
+            if (line.baseline + line.descent < top) continue;
             if (line.baseline - line.ascent > bottom) break;
             line.draw(ctx);
         }
@@ -280,22 +477,22 @@ export class Doc {
 
         let word = pwords[word_idx];
         let next_pword = pwords[word_idx + 1];
-        let ch = word.character_by_coordinate(x,next_pword);
+        let ch = word.character_by_coordinate(x, next_pword);
         return ch;
     }
 
     select(ordinal, ordinalEnd) {
-        this.selection.start = ordinal<0?0:ordinal;
-        this.selection.end = ordinalEnd >= this.length()?this.length()- 1:ordinalEnd;
+        this.selection.start = ordinal < 0 ? 0 : ordinal;
+        this.selection.end = ordinalEnd >= this.length() ? this.length() - 1 : ordinalEnd;
         if (ordinal === ordinalEnd) this.selection.start = this.selection.end = Math.min(ordinal, this.length() - 1);
         this.caret_visable = true;
         this.fire_selection_change();
     }
-    draw_selection(ctx: CanvasRenderingContext2D) {
-        const start = this.character_by_ordinal(this.selection.start);
+    draw_selection(ctx: CanvasRenderingContext2D, s: number, e: number) {
+        const start = this.character_by_ordinal(s);
         const start_bounds = start.pchar.bounds();
         let line_bounds = start.pchar.pword.line.bounds(false);
-        if (this.selection.start === this.selection.end) {
+        if (s === e) {
             if (this.caret_visable) {
                 ctx.beginPath();
                 ctx.moveTo(start_bounds.left, line_bounds.top);
@@ -305,7 +502,7 @@ export class Doc {
         } else {
             ctx.save();
             ctx.fillStyle = 'rgba(0, 100, 200, 0.3)';
-            const end = this.character_by_ordinal(this.selection.end);
+            const end = this.character_by_ordinal(e);
             const end_bounds = end.pchar.bounds();
 
             if (start.pchar.pword.line.ordinal === end.pchar.pword.line.ordinal) {
@@ -494,7 +691,6 @@ export class Doc {
     }
 
     make_edit_command(self: Doc, start: number, count: number, ...words) {
-        const sel_start = this.selection.start, sel_end = this.selection.end;
         return function (redo?) {
             const old_words = self.words.splice(start, count, ...words);
             // let delta = new Delta();
@@ -505,7 +701,6 @@ export class Doc {
             }
             stk.push(self.make_edit_command(self, start, words.length, ...old_words));
             self.layout();
-            self.select(sel_start, sel_end);
         };
     }
 

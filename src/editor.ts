@@ -385,9 +385,11 @@ export class Editor {
 
         if (this.select_drag_start || (this.editor_div.activeElement === this.text_area)) {
         }
-        this.doc.draw_selection(this.ctx);
+        this.doc.draw_selection(this.ctx,this.doc.selection.start,this.doc.selection.end);
 
+        var rect = this.spacer.getBoundingClientRect();
         // doc.draw_selection(ctx);
+        this.doc.draw_cursor(rect);
         const _e = performance.now();
         // const elapsedTime = end - start;
         // console.log(`paint time : ${_e - _s}`);
