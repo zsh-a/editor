@@ -87,7 +87,7 @@ export class Doc {
         this.ydoc = new Y.Doc();
         // Sync clients with the y-websocket provider
         this.websocketProvider = new WebsocketProvider(
-            'ws://192.168.229.3:1234', 'quill-demo-2', this.ydoc
+            'ws://10.100.55.190:1234', 'quill-demo-2', this.ydoc
         );
         this.awareness = this.websocketProvider.awareness;
         this.cursors = new Map();
@@ -184,6 +184,14 @@ export class Doc {
             removed.forEach(id => {
                 self.remove_cursor(id.toString());
             })
+            const cur = this.awareness.getLocalState()
+            // console.log(cur)
+
+            if(cur.cursor){
+                const anchor = Y.createAbsolutePositionFromRelativePosition(Y.createRelativePositionFromJSON(cur.cursor.anchor), this.ydoc);
+                const head = Y.createAbsolutePositionFromRelativePosition(Y.createRelativePositionFromJSON(cur.cursor.head), this.ydoc);
+                this.select(anchor.index,head.index);
+            }
         });
     }
 

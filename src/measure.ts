@@ -1,7 +1,7 @@
 import { Run } from "./run";
 
 export const TEXT_DEFAULT_STYLE = {
-    size: 10,
+    size: 20,
     font: 'Helvetica',
     color: 'black'
 };
