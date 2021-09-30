@@ -273,7 +273,7 @@ export class Editor {
                     }
                     break;
                 case "Delete":
-                    if (start === end && start < doc_length) {
+                    if (start === end && start < doc_length - 1) {
                         this.doc.range(start, start + 1).clear();
                         this.select(this.focus_char, this.focus_char);
                         handled = true;

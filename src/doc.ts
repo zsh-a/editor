@@ -36,6 +36,10 @@ function ispunctuation(c) {
     return CHINESE_PUNCTUATION_PATTERN.test(c);
 }
 
+function randomColor() {   
+    return '#'+(Math.random()*0xFFFFFF<<0).toString(16);
+}
+
 
 class Cursor {
     name: string;
@@ -83,7 +87,7 @@ export class Doc {
         this.ydoc = new Y.Doc();
         // Sync clients with the y-websocket provider
         this.websocketProvider = new WebsocketProvider(
-            'ws://0.0.0.0:1234', 'quill-demo-2', this.ydoc
+            'ws://192.168.229.3:1234', 'quill-demo-2', this.ydoc
         );
         this.awareness = this.websocketProvider.awareness;
         this.cursors = new Map();
@@ -122,14 +126,13 @@ export class Doc {
             if (this.awareness) {
                 const aw = this.awareness.getLocalState();
                 const sel = this.selection_range();
-
                 if (sel === null) {
                   if (this.awareness.getLocalState() !== null) {
                     this.awareness.setLocalStateField('cursor', (null));
                   }
                 }else{
-                    const anchor = Y.createRelativePositionFromTypeIndex(this.ytext, this.selection.start);
-                    const head = Y.createRelativePositionFromTypeIndex(this.ytext, this.selection.end);
+                    const anchor = Y.createRelativePositionFromTypeIndex(this.ytext, sel.start);
+                    const head = Y.createRelativePositionFromTypeIndex(this.ytext, sel.end);
                     if (!aw || !aw.cursor || !Y.compareRelativePositions(anchor, aw.cursor.anchor) || !Y.compareRelativePositions(head, aw.cursor.head)) {
                         this.awareness.setLocalStateField('cursor', {
                             anchor,
@@ -148,14 +151,13 @@ export class Doc {
             if (this.awareness) {
                 const aw = this.awareness.getLocalState();
                 const sel = this.selection_range();
-
                 if (sel === null) {
                   if (this.awareness.getLocalState() !== null) {
                     this.awareness.setLocalStateField('cursor', (null));
                   }
                 }else{
-                    const anchor = Y.createRelativePositionFromTypeIndex(this.ytext, this.selection.start);
-                    const head = Y.createRelativePositionFromTypeIndex(this.ytext, this.selection.end);
+                    const anchor = Y.createRelativePositionFromTypeIndex(this.ytext, sel.start);
+                    const head = Y.createRelativePositionFromTypeIndex(this.ytext, sel.end);
                     if (!aw || !aw.cursor || !Y.compareRelativePositions(anchor, aw.cursor.anchor) || !Y.compareRelativePositions(head, aw.cursor.head)) {
                         this.awareness.setLocalStateField('cursor', {
                             anchor,
@@ -171,6 +173,7 @@ export class Doc {
         });
 
         this.awareness.on('change', ({ added, removed, updated }) => {
+            console.log("awarenesss changed")
             const states = self.awareness.getStates()
             added.forEach(id => {
                 self.update_cursor(states.get(id), id, self.ydoc, self.ytext);
@@ -188,7 +191,7 @@ export class Doc {
         try {
             if (aw && aw.cursor && clientId !== doc.clientID) {
                 const user = aw.user || {}
-                const color = user.color || '#ffa500'
+                const color = user.color || randomColor();
                 const name = user.name || `User: ${clientId}`
                 this.create_cursor(clientId.toString(), name, color)
                 const anchor = Y.createAbsolutePositionFromRelativePosition(Y.createRelativePositionFromJSON(aw.cursor.anchor), doc)
@@ -202,8 +205,6 @@ export class Doc {
         } catch (err) {
             console.error(err)
         }
-        var rect = document.querySelector('.spacer').getBoundingClientRect();
-        this.draw_cursor(rect);
     }
 
 
@@ -229,9 +230,9 @@ export class Doc {
         const left = rect.left, top = rect.top;
         let cursor_html = '';
         this.cursors.forEach((cursor, client_id) => {
-            // this.draw_selection(ctx,cursor.index,cursor.index + cursor.length);
-            const s = cursor.index, e = cursor.index + cursor.length;
-
+            const s = Math.min(cursor.index,this.length() - 1), e = Math.min(cursor.index + cursor.length,this.length() - 1);
+            const bg_color = cursor.color + '4c';
+            const color = cursor.color + 'ff'
             const start = this.character_by_ordinal(s);
             const start_bounds = start.pchar.bounds();
             let line_bounds = start.pchar.pword.line.bounds(false);
@@ -244,11 +245,11 @@ export class Doc {
                 const end_bounds = end.pchar.bounds();
 
                 if (start.pchar.pword.line.ordinal === end.pchar.pword.line.ordinal) {
-                    html += `<span class="ql-cursor-selection-block" style="top: ${line_bounds.top + top}px; left: ${start_bounds.left + left}px; width: ${end_bounds.left - start_bounds.left}px; height: ${line_bounds.height}px; background-color: rgba(255, 165, 0, 0.3);"></span>`;
+                    html += `<span class="ql-cursor-selection-block" style="top: ${line_bounds.top + top}px; left: ${start_bounds.left + left}px; width: ${end_bounds.left - start_bounds.left}px; height: ${line_bounds.height}px; background-color: ${bg_color};"></span>`;
                 } else {
-                    html += `<span class="ql-cursor-selection-block" style="top: ${line_bounds.top + top}px; left: ${start_bounds.left + left}px; width: ${line_bounds.width - start_bounds.left}px; height: ${line_bounds.height}px; background-color: rgba(255, 165, 0, 0.3);"></span>`;
+                    html += `<span class="ql-cursor-selection-block" style="top: ${line_bounds.top + top}px; left: ${start_bounds.left + left}px; width: ${line_bounds.width - start_bounds.left}px; height: ${line_bounds.height}px; background-color: ${bg_color};"></span>`;
                     line_bounds = end.pchar.pword.line.bounds(false);
-                    html += `<span class="ql-cursor-selection-block" style="top: ${line_bounds.top + top}px; left: ${line_bounds.left + left}px; width: ${end_bounds.left - line_bounds.left}px; height: ${line_bounds.height}px; background-color: rgba(255, 165, 0, 0.3);"></span>`;
+                    html += `<span class="ql-cursor-selection-block" style="top: ${line_bounds.top + top}px; left: ${line_bounds.left + left}px; width: ${end_bounds.left - line_bounds.left}px; height: ${line_bounds.height}px; background-color: ${bg_color};"></span>`;
 
                     let l = 0, r = this.lines.length - 1;
                     while (l < r) {
@@ -262,7 +263,7 @@ export class Doc {
                             let line = this.lines[i];
                             if (line.ordinal + line.length > end.pchar.ordinal) break;
                             line_bounds = line.bounds(false);
-                            html += `<span class="ql-cursor-selection-block" style="top: ${line_bounds.top + top}px; left: ${line_bounds.left + left}px; width: ${line_bounds.width}px; height: ${line_bounds.height}px; background-color: rgba(255, 165, 0, 0.3);"></span>`;
+                            html += `<span class="ql-cursor-selection-block" style="top: ${line_bounds.top + top}px; left: ${line_bounds.left + left}px; width: ${line_bounds.width}px; height: ${line_bounds.height}px; background-color: ${bg_color};"></span>`;
                         }
                     }
                 }
@@ -270,10 +271,10 @@ export class Doc {
             html += '</span>';
             if(s === e){
                 html += `<span class="ql-cursor-caret-container" style="top: ${start_bounds.top + top}px; left: ${start_bounds.left + left}px; height: ${line_bounds.height}px;">\
-                            <span class="ql-cursor-caret" style="background-color: rgb(255, 165, 0);"></span>\
+                            <span class="ql-cursor-caret" style="background-color: ${bg_color};"></span>\
                         </span>\
                         <div class="ql-cursor-flag"\
-                            style="background-color: rgb(255, 165, 0); transition-delay: 3000ms; transition-duration: 400ms; top: ${start_bounds.top + top}px; left: ${start_bounds.left + left}px;">\
+                            style="background-color: ${color}; transition-delay: 3000ms; transition-duration: 400ms; top: ${start_bounds.top + top}px; left: ${start_bounds.left + left}px;">\
                             <small class="ql-cursor-name">User: ${client_id}</small>\
                             <span class="ql-cursor-flag-flap"></span>\
                         </div>\
@@ -283,10 +284,10 @@ export class Doc {
                 const end = this.character_by_ordinal(e);
                 const end_bounds = end.pchar.bounds();
                 html += `<span class="ql-cursor-caret-container" style="top: ${end_bounds.top + top}px; left: ${end_bounds.left + left}px; height: ${line_bounds.height}px;">\
-                            <span class="ql-cursor-caret" style="background-color: rgb(255, 165, 0);"></span>\
+                            <span class="ql-cursor-caret" style="background-color: ${color};"></span>\
                         </span>\
                         <div class="ql-cursor-flag"\
-                            style="background-color: rgb(255, 165, 0); transition-delay: 3000ms; transition-duration: 400ms; top: ${end_bounds.top + top}px; left: ${end_bounds.left + left}px;">\
+                            style="background-color: ${color}; transition-delay: 3000ms; transition-duration: 400ms; top: ${end_bounds.top + top}px; left: ${end_bounds.left + left}px;">\
                             <small class="ql-cursor-name">User: ${client_id}</small>\
                             <span class="ql-cursor-flag-flap"></span>\
                         </div>\
@@ -705,8 +706,8 @@ export class Doc {
     }
 
     insert(text) {
-        const len = this.selection_range().set_text(text);
-        this.select(this.selection.end + len, this.selection.end + len);
+        const length= this.selection_range().set_text(text);
+        this.select(this.selection.end + length, this.selection.end + length);
     }
 
     perform_undo(redo?) {
