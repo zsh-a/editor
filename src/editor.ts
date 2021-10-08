@@ -171,12 +171,18 @@ export class Editor {
             }
         });
 
+        handle_mouse_event(this.spacer,'dblclick',(ev,x,y)=>{
+            const ch = this.doc.character_by_coordinate(x,y);
+            console.log(ch)
+            this.doc.select(ch.pword.ordinal,ch.pword.ordinal + ch.pword.length);
+        });
+
         handle_mouse_event(this.spacer,'mouseup',(ev,x,y)=>{
             this.select_drag_start = null;
             this.keyboardX = null;
             this.update_textarea();
             this.text_area.focus();
-        })
+        });
 
         handel_event(this.text_area,'keydown', (ev) => {
             // console.log(ev.key,typeof ev.key)

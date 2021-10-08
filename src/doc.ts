@@ -243,7 +243,7 @@ export class Doc {
             const color = cursor.color + 'ff'
             const start = this.character_by_ordinal(s);
             const start_bounds = start.pchar.bounds();
-            let line_bounds = start.pchar.pword.line.bounds(false);
+            let line_bounds = start.pchar.pword.line.bounds(true);
             let html = `<span class="ql-cursor" id="ql-cursor-${client_id}">`;
 
             html += '<span class="ql-cursor-selections">';
@@ -255,8 +255,8 @@ export class Doc {
                 if (start.pchar.pword.line.ordinal === end.pchar.pword.line.ordinal) {
                     html += `<span class="ql-cursor-selection-block" style="top: ${line_bounds.top + top}px; left: ${start_bounds.left + left}px; width: ${end_bounds.left - start_bounds.left}px; height: ${line_bounds.height}px; background-color: ${bg_color};"></span>`;
                 } else {
-                    html += `<span class="ql-cursor-selection-block" style="top: ${line_bounds.top + top}px; left: ${start_bounds.left + left}px; width: ${line_bounds.width - start_bounds.left}px; height: ${line_bounds.height}px; background-color: ${bg_color};"></span>`;
-                    line_bounds = end.pchar.pword.line.bounds(false);
+                    html += `<span class="ql-cursor-selection-block" style="top: ${line_bounds.top + top}px; left: ${start_bounds.left + left}px; width: ${line_bounds.width - start_bounds.left + line_bounds.left}px; height: ${line_bounds.height}px; background-color: ${bg_color};"></span>`;
+                    line_bounds = end.pchar.pword.line.bounds(true);
                     html += `<span class="ql-cursor-selection-block" style="top: ${line_bounds.top + top}px; left: ${line_bounds.left + left}px; width: ${end_bounds.left - line_bounds.left}px; height: ${line_bounds.height}px; background-color: ${bg_color};"></span>`;
 
                     let l = 0, r = this.lines.length - 1;
@@ -341,7 +341,7 @@ export class Doc {
                 }
             } else {
                 let flag = false;
-                while (i < runs.length) {
+                while (!flag) {
                     let run = runs[i];
                     if (!istext(run.text[j])) break;
                     let s = j;
@@ -358,7 +358,7 @@ export class Doc {
                         ++i;
                         j = 0;
                     }
-                    if (flag) break;
+                    flag = true;
                 }
 
                 while (i < runs.length) {
@@ -450,7 +450,7 @@ export class Doc {
         }
     }
 
-    character_by_coordinate(x: number, y: number) {
+    character_by_coordinate(x: number, y: number) : positionedChar{
         let l = 0, r = this.lines.length - 1;
         while (l < r) {
             let mid = l + r >> 1;
@@ -500,7 +500,7 @@ export class Doc {
     draw_selection(ctx: CanvasRenderingContext2D, s: number, e: number) {
         const start = this.character_by_ordinal(s);
         const start_bounds = start.pchar.bounds();
-        let line_bounds = start.pchar.pword.line.bounds(false);
+        let line_bounds = start.pchar.pword.line.bounds(true);
         if (s === e) {
             if (this.caret_visable) {
                 ctx.beginPath();
@@ -517,8 +517,8 @@ export class Doc {
             if (start.pchar.pword.line.ordinal === end.pchar.pword.line.ordinal) {
                 ctx.fillRect(start_bounds.left, line_bounds.top, end_bounds.left - start_bounds.left, line_bounds.height);
             } else {
-                ctx.fillRect(start_bounds.left, line_bounds.top, line_bounds.width - start_bounds.left, line_bounds.height);
-                line_bounds = end.pchar.pword.line.bounds(false);
+                ctx.fillRect(start_bounds.left, line_bounds.top,line_bounds.width - start_bounds.left + line_bounds.left, line_bounds.height);
+                line_bounds = end.pchar.pword.line.bounds(true);
                 ctx.fillRect(line_bounds.left, line_bounds.top, end_bounds.left - line_bounds.left, line_bounds.height);
 
                 let l = 0, r = this.lines.length - 1;
@@ -532,7 +532,7 @@ export class Doc {
                     for (let i = l; ; i++) {
                         let line = this.lines[i];
                         if (line.ordinal + line.length > end.pchar.ordinal) break;
-                        line_bounds = line.bounds(false);
+                        line_bounds = line.bounds(true);
                         ctx.fillRect(line_bounds.left, line_bounds.top, line_bounds.width, line_bounds.height);
                     }
                 }
@@ -714,8 +714,9 @@ export class Doc {
     }
 
     insert(text) {
+        const last_end = this.selection.end; // backup before update selection for remote
         const length= this.selection_range().set_text(text);
-        this.select(this.selection.end + length, this.selection.end + length);
+        this.select(last_end + length, last_end + length);
     }
 
     perform_undo(redo?) {

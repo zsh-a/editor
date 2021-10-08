@@ -30,6 +30,9 @@ export class Line {
             case 'center':
                 offset = (doc.width() - this.width) / 2;
                 break;
+            case 'right':
+                offset = doc.width() - this.width;
+                break;
         }
         for(let word of words){
             this.positionedWords.push(new PositionedWord(word,this,x + offset,idx));
@@ -54,15 +57,9 @@ export class Line {
         if (minimal) {
             let first_word = this.firstWord().bounds(),
                 last_word = this.lastWord().bounds();
-            return new Rect(first_word.left, this.baseline - this.ascent, last_word.left + last_word.width, this.ascent + this.descent);
+            return new Rect(first_word.left, this.baseline - this.ascent, last_word.left + last_word.width - first_word.left, this.ascent + this.descent);
 
         }
         return new Rect(0, this.baseline - this.ascent, this.width, this.ascent + this.descent);
     }
-    // characterByOrdinal(index:number) {
-    //     // TODO
-    //     // if (index >= this.ordinal && index < this.ordinal + this.length) {
-
-    //     // }
-    // }
 }
