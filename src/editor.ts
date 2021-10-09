@@ -400,6 +400,7 @@ export class Editor {
 
         if (this.select_drag_start || (this.editor_div.activeElement === this.text_area)) {
         }
+        this.doc.select(this.doc.selection.start,this.doc.selection.end)
         this.doc.draw_selection(this.ctx,this.doc.selection.start,this.doc.selection.end);
 
         var rect = this.spacer.getBoundingClientRect();

@@ -508,11 +508,15 @@ export class Doc {
     }
 
     select(ordinal, ordinalEnd) {
+        const old_start = this.selection.start;
+        const old_end = this.selection.end;
         this.selection.start = ordinal < 0 ? 0 : ordinal;
         this.selection.end = ordinalEnd >= this.length() ? this.length() - 1 : ordinalEnd;
         if (ordinal === ordinalEnd) this.selection.start = this.selection.end = Math.min(ordinal, this.length() - 1);
-        this.caret_visable = true;
-        this.fire_selection_change();
+        if(this.selection.start != old_start || this.selection.end != old_end){
+            this.caret_visable = true;
+            this.fire_selection_change();
+        }
     }
     draw_selection(ctx: CanvasRenderingContext2D, s: number, e: number) {
         const start = this.character_by_ordinal(s);
