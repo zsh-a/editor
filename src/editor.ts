@@ -6,6 +6,7 @@ import { TEXT_DEFAULT_STYLE } from "./measure";
 import { positionedChar } from "./positionedword";
 import { Run } from "./run";
 import { SIMPLE_TEXT } from "./simple_text";
+import {InlineObject} from './inline'
 
 export class Editor {
     doc: Doc;
@@ -71,20 +72,20 @@ export class Editor {
                 this.paint();
             });
 
-            this.doc.on(Doc.Events.SELECTION_CHANGE, () => {
-                var formatting = this.doc.selection_range().get_formating();
-                var val = id in formatting ? formatting[id] : TEXT_DEFAULT_STYLE[id];
-                if (elem.nodeName === 'INPUT') {
-                    if (val === Run.MULTIPLE_VALUES) {
-                        elem.indeterminate = true;
-                    } else {
-                        elem.indeterminate = false;
-                        elem.checked = val;
-                    }
-                } else {
-                    elem.value = val;
-                }
-            });
+            // this.doc.on(Doc.Events.SELECTION_CHANGE, () => {
+            //     var formatting = this.doc.selection_range().get_formating();
+            //     var val = id in formatting ? formatting[id] : TEXT_DEFAULT_STYLE[id];
+            //     if (elem.nodeName === 'INPUT') {
+            //         if (val === Run.MULTIPLE_VALUES) {
+            //             elem.indeterminate = true;
+            //         } else {
+            //             elem.indeterminate = false;
+            //             elem.checked = val;
+            //         }
+            //     } else {
+            //         elem.value = val;
+            //     }
+            // });
         }
 
         var typing_chinese = false;
@@ -356,9 +357,17 @@ export class Editor {
             if (self.doc.toggle_caret())
                 self.paint();
         }, 500);
-
-        // this.doc.load(CHINESE_HUGE_TEXT);
-        // console.log(this.doc.words)
+        
+        handel_event(document.querySelector('#insert-image'),'click',()=>{
+            const src = window.prompt('img url');
+            if(!src || src == '') return;
+            let obj = new InlineObject(this.doc,'img',src);
+            obj.type = 'img';
+            obj.width = 500;
+            obj.height = 300; 
+            this.doc.insert([{text:obj}]);
+        });
+        // this.doc.load(inlineobj);
         this.update();
     }
 

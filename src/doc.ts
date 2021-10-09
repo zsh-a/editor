@@ -10,6 +10,7 @@ import { WebsocketProvider } from "y-websocket";
 import { createMutex } from 'lib0/mutex.js'
 import { CHINESE_HUGE_TEXT } from "./chinese_doc";
 import { Awareness } from "y-protocols/awareness";
+import { InlineObject } from "./inline";
 
 const c = <HTMLCanvasElement>document.querySelector("#measure");
 export const canvas_measure = c.getContext("2d");
@@ -87,7 +88,7 @@ export class Doc {
         this.ydoc = new Y.Doc();
         // Sync clients with the y-websocket provider
         this.websocketProvider = new WebsocketProvider(
-            'ws://10.100.55.190:1234', 'quill-demo-2', this.ydoc
+            'ws://0.0.0.0:1234', 'quill-demo-2', this.ydoc
         );
         this.awareness = this.websocketProvider.awareness;
         this.cursors = new Map();
@@ -106,10 +107,15 @@ export class Doc {
                         index += d.retain;
                     } else if (d.insert) {
                         let run = new Run();
-                        run.text = d.insert;
-                        for (let key in d.attributes) {
-                            run[key] = d.attributes[key];
+                        if(typeof d.insert === 'string'){
+                            run.text = d.insert;
+                            for (let key in d.attributes) {
+                                run[key] = d.attributes[key];
+                            }
+                        }else{
+                            run.text = new InlineObject(this,'img',d.insert.src);
                         }
+                        
                         index += this.splice(index, index, run, true);
                     } else {
                         this.splice(index, index + d.delete, [], true);
@@ -326,6 +332,13 @@ export class Doc {
             let text_parts = [];
             let space_parts = [];
 
+            if(typeof runs[i].text !== 'string'){
+                text_parts.push(new Part(runs[i]));
+                words.push(new Word(new Section(text_parts),new Section(space_parts)));
+                i++;
+                continue;
+            }
+
             if (runs[i].text.length === 0) {
                 i++;
                 j = 0;
@@ -414,6 +427,10 @@ export class Doc {
         for (let word of this.words) {
             if (word.width + line_width > this.width()) {
                 newline(this);
+            }
+            if(word.isInlineObj){
+                word.width = word.text.parts[0].text.width;
+                word.ascent = word.text.parts[0].text.height;
             }
             line_width += word.width;
             max_ascent = Math.max(max_ascent, word.ascent);
@@ -657,9 +674,12 @@ export class Doc {
         const end_word_chars = start == end ? start_word_chars : end_pword.characters;
 
         let prefix: positionedChar[];
+
         if (start_pchar.ordinal === start_pword.ordinal) {
             // the first char of the word
-            if (start_word_index > 0) {
+            if(prev.pchar.pword.word.isInlineObj){
+                prefix = [];
+            }else if (start_word_index > 0) {
                 prefix = prev.pchar.pword.characters;
                 start_word_index--;
             } else {
@@ -669,11 +689,12 @@ export class Doc {
             prefix = start_word_chars.slice(0, start_pchar.ordinal - start_pword.ordinal);
         }
 
-        let suffix: positionedChar[];
+
+        let suffix: positionedChar[] = [];
 
         if (end_pchar.ordinal === end_pword.ordinal) {
             // exlude the end symbol
-            if (end_pchar.ordinal === this.length() - 1) {
+            if (end_pchar.ordinal === this.length() - 1 || end_pword.word.isInlineObj) {
                 // todo
                 // process the end of file symbol
                 suffix = [];
@@ -686,6 +707,7 @@ export class Doc {
         } else {
             suffix = end_word_chars.slice(end_pchar.ordinal - end_pword.ordinal);
         }
+
 
         const start_runs = prefix.map(Run.pchar2run);
         const end_runs = suffix.map(Run.pchar2run);

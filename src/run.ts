@@ -1,9 +1,10 @@
+import { InlineObject } from "./inline";
 import { positionedChar } from "./positionedword";
 
 export const FORMATTING_KEYS = [ 'bold', 'italic', 'underline', 'strikeout', 'color', 'font', 'size', 'align', 'script' ];
 
 export class Run{
-    text:string;
+    text:string | InlineObject;
     color?:string;
     bold?:boolean;
     italic?:boolean;
@@ -48,7 +49,7 @@ export class Run{
     }
 
     static same(a:Run,b:Run){
-        return FORMATTING_KEYS.every((key)=>{
+        return a && b && FORMATTING_KEYS.every((key)=>{
             return a[key] === b[key];
         });
     }
@@ -59,6 +60,11 @@ export class Run{
             let current = Run.clone(runs[0]);
             res.push(current);
             for(let i = 1;i < runs.length;i++){
+                if(typeof runs[i].text !== 'string'){
+                    res.push(runs[i]);
+                    current = null;
+                    continue;
+                }
                 if(Run.same(current,runs[i])){
                     current.text += runs[i].text;
                 }else{

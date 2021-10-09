@@ -14,7 +14,8 @@ export class Section{
             this.descent = Math.max(this.descent,p.descent);
             this.width += p.width;
             this.length += p.text.length;
-            this.plain_text += p.text;
+            if(typeof p.text === 'string')
+                this.plain_text += p.text;
         }
     }
 }
@@ -27,6 +28,7 @@ export class Word{
     width:number;
     align:string;
     plain_text:string;
+    isInlineObj:boolean;
     _eof:boolean;
     constructor(text:Section,space:Section,align?:string,eof?:boolean){
         this.text = text;
@@ -37,6 +39,7 @@ export class Word{
         this.descent = Math.max(this.text.descent,this.space.descent);
         this.width = this.text.width + this.space.width;
         this.plain_text = this.text.plain_text + this.space.plain_text;
+        this.isInlineObj = (text && text.parts[0] && typeof text.parts[0].text !== 'string')?true:false;
     }
 
     // static eof(){
