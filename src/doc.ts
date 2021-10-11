@@ -88,7 +88,7 @@ export class Doc {
         this.ydoc = new Y.Doc();
         // Sync clients with the y-websocket provider
         this.websocketProvider = new WebsocketProvider(
-            'ws://0.0.0.0:1234', 'quill-demo-2', this.ydoc
+            'ws://192.168.229.3:1234', 'quill-demo-2', this.ydoc
         );
         this.awareness = this.websocketProvider.awareness;
         this.cursors = new Map();

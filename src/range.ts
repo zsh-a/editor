@@ -32,10 +32,15 @@ export class Range{
         let res = new Array<Run>();
         // TODO optimize
         while(!pos.equal(end_pos)){
-            let run = Run.clone(pos.pchar.part.run);
-            run.text = pos.pchar.char;
+            if(typeof pos.pchar.part.run.text !== 'string'){
+                // inline object
+                res.push(pos.pchar.part.run);
+            }else{
+                let run = Run.clone(pos.pchar.part.run);
+                run.text = pos.pchar.char;
+                res.push(run);
+            }
             pos = pos.next();
-            res.push(run);
         }
         let runs = Run.consolidate(res);
         return runs;
