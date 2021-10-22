@@ -64,7 +64,13 @@ export class Editor {
 
             elem.addEventListener('change', (e) => {
                 let formatting = {};
-                const range = this.doc.selection_range();
+                let range;
+                if(this.doc.selection.start === this.doc.selection.end){
+                    const pos = this.doc.character_by_ordinal(this.doc.selection.start);
+                    range = this.doc.range(pos.pchar.pword.ordinal,pos.pchar.pword.ordinal + pos.pchar.pword.length);
+                }else{
+                    range = this.doc.selection_range();
+                }
                 var val = elem.nodeName === 'INPUT' ? elem.checked : elem.value;
                 formatting[id] = val;
                 // console.log(formatting)
@@ -290,12 +296,14 @@ export class Editor {
                     if (ev.ctrlKey) {
                         handled = true;
                         this.doc.perform_undo();
+                        this.paint();
                     }
                     break;
                 case 'y':
                     if (ev.ctrlKey) {
                         handled = true;
                         this.doc.perform_undo(true);
+                        this.paint();
                     }
                     break;
                 case 'a': // A select all

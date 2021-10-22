@@ -73,6 +73,8 @@ export class Doc {
 
     cursors_div: HTMLDivElement;
 
+    undoManager:Y.UndoManager;
+
     static Events = { SELECTION_CHANGE: 'selection-change', TEXT_CHANGE: 'text-change' };
 
     constructor() {
@@ -93,6 +95,7 @@ export class Doc {
         this.awareness = this.websocketProvider.awareness;
         this.cursors = new Map();
         this.ytext = this.ydoc.getText('quill');
+        this.undoManager = new Y.UndoManager(this.ytext);
         this.websocketProvider.on('status', event => {
             console.log(event.status) // logs "connected" or "disconnected"
         });
@@ -127,6 +130,7 @@ export class Doc {
         this.on(Doc.Events.TEXT_CHANGE, (delta: Delta) => {
             createMutex()(() => {
                 self.ytext.applyDelta(delta.ops);
+                self.undoManager.stopCapturing();
             })
 
             if (this.awareness) {
@@ -748,6 +752,8 @@ export class Doc {
     perform_undo(redo?) {
         var op = (redo ? this.redo : this.undo).pop();
         if (op) {
+            if(redo) this.undoManager.redo();
+            else this.undoManager.undo();
             op(!redo);
         }
     }

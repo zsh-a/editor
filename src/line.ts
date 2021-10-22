@@ -20,9 +20,11 @@ export class Line {
         this.ascent = ascent;
         this.descent = descent;
         this.ordinal = ordinal;
-        this.align = words[0] && words[0].align || 'left';
+        this.align = 'left';
+        for(let word of words){
+            if(word.align) this.align = word.align;
+        }
         let x = 0;
-        
         let idx = ordinal;
         this.positionedWords = new Array<PositionedWord>();
         let offset = 0;

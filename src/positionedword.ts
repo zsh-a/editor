@@ -134,18 +134,4 @@ export class PositionedWord {
             return this.positioned_characters()[index - this.ordinal];
         return null;
     }
-    // characterByOrdinal(index) {
-    //     if(index >= this.ordinal && index < this.ordinal + this.length)
-    //         return this.positionedCharacters()[index - this.ordinal];
-    // }
-    // lastCharacter(){
-    //     let chars = this.positionedCharacters();
-    //     return chars[chars.length - 1];
-    // }
-    // firstCharacter(){
-    //     return this.positionedCharacters()[0];
-    // }
-
-
-
 }
