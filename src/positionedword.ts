@@ -7,16 +7,6 @@ import { Run } from "./run";
 import { Word } from "./word";
 import { Rect } from './rect';
 
-// export function new_line_width(run) {
-//     return measure_text(ctx, ENTER, get_font_string(run)).width;
-// }
-
-// var positionedChar = {
-//     bounds: () => {
-//         // let wb = this.word.bounds();
-//     }
-// };
-
 function newLineWidth(run: Run) {
     return measure_text(canvas_measure, ENTER, run).width;
 };
@@ -40,11 +30,6 @@ export class positionedChar {
         return new Rect(this.left, wb.top, width, wb.height);
     }
 }
-
-// function newLineWidth(run) {
-//     return measure_text(ctx, ENTER, get_font_string(run)).width;
-// };
-
 
 export class PositionedWord {
     word: Word;

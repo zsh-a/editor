@@ -11,15 +11,38 @@ export class Range{
         this.end = end;
     }
     plain_text(){
-        // TODO optimize
         let text = '';
         let start_pos = this.doc.character_by_ordinal(this.start);
         const end_pos = this.doc.character_by_ordinal(this.end);
-        while(!start_pos.equal(end_pos)){
-            text += start_pos.pchar.char;
-            start_pos =  start_pos.next();
+        const start_pword = start_pos.pchar.pword;
+        const end_pword = end_pos.pchar.pword;
+        if(start_pword === end_pword){
+            const s = start_pos.pchar.ordinal - start_pword.ordinal;
+            const len = end_pos.pchar.ordinal - start_pos.pchar.ordinal;
+            text += start_pword.word.plain_text.slice(s,s + len);
+        }else{
+            const s = start_pos.pchar.ordinal - start_pword.ordinal;
+            text += start_pword.word.plain_text.slice(s,start_pword.length);
+            let line_no = start_pos.line_no, pword_no = start_pos.pword_no + 1;
+            if(pword_no >= this.doc.lines[line_no].positionedWords.length){
+                line_no++;
+                pword_no = 0;
+            }
+            while(line_no < end_pos.line_no){
+                
+                while(pword_no < this.doc.lines[line_no].positionedWords.length){
+                    text += this.doc.lines[line_no].positionedWords[pword_no].word.plain_text;
+                    ++pword_no;
+                }
+                ++line_no;
+                pword_no = 0;
+            }
+            while(pword_no < end_pos.pword_no){
+                text += this.doc.lines[line_no].positionedWords[pword_no].word.plain_text;
+                ++pword_no;
+            }
+            text += end_pword.word.plain_text.slice(0,end_pos.pchar.ordinal - end_pword.ordinal);
         }
-        // console.log(text);
         return text;
     }
 

@@ -450,6 +450,11 @@ export class Doc {
         }
         const last_line = this.lines[this.lines.length - 1];
         this.height = !last_line ? 0 : last_line.baseline + last_line.descent;
+
+        // if(this.next_selection){
+        //     this.select(this.next_selection.start,this.next_selection.end);
+        //     delete this.next_selection;
+        // }
         const _e = performance.now();
         console.log(`layout time : ${_e - _s}`);
     }
@@ -732,13 +737,12 @@ export class Doc {
     make_edit_command(self: Doc, start: number, count: number, ...words) {
         return function (redo?) {
             const old_words = self.words.splice(start, count, ...words);
-            // let delta = new Delta();
 
             let stk = self[redo ? 'redo' : 'undo'];
             while (stk.length > 50) {
                 stk.shift();
             }
-            stk.push(self.make_edit_command(self, start, words.length, ...old_words));
+            stk.push({fn:self.make_edit_command(self, start, words.length, ...old_words),sel:{start:self.selection.start,end:self.selection.end}});
             self.layout();
         };
     }
@@ -754,7 +758,8 @@ export class Doc {
         if (op) {
             if(redo) this.undoManager.redo();
             else this.undoManager.undo();
-            op(!redo);
+            op.fn(!redo);
+            this.select(op.sel.start,op.sel.end);
         }
     }
 
